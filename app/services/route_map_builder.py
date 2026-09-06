@@ -209,7 +209,7 @@ def build_route_map(
             )
         )
 
-        prediction_station_codes = {
+    prediction_station_codes = {
         str(
             _get_value(
                 _get_value(
