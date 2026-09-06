@@ -1,3 +1,4 @@
+import logging
 from datetime import date, timedelta
 from app.clients.railradar import RailRadarClient
 from app.core.config import get_settings
@@ -41,6 +42,9 @@ from app.services.eta_weather_corridor import (
     ETAWeatherCorridorService,
 )
 
+logger = logging.getLogger(
+    "raileta.forecast"
+)
 
 _live_payload_cache = TTLCache(
     ttl_seconds=get_settings().cache_ttl_seconds
@@ -532,6 +536,18 @@ class LiveForecastService:
             raise
 
         except Exception as exc:
+            logger.exception(
+                "live_forecast_failed "
+                "train_number=%s "
+                "journey_date=%s "
+                "exception_type=%s "
+                "exception_message=%s",
+                normalized_train_number,
+                journey_date,
+                type(exc).__name__,
+                str(exc),
+            )
+
             raise PredictionError(
                 "Failed to generate the "
                 "live ETA forecast.",
