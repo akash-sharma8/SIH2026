@@ -59,11 +59,11 @@ def test_live_forecast_service_success():
         )
 
     assert "diagnostics" in result
-    
+
 
     diagnostics = result["diagnostics"]
     assert "evaluation" in diagnostics
-    
+
     evaluation = diagnostics["evaluation"]
 
     if evaluation is not None:
@@ -398,40 +398,16 @@ def test_live_forecast_service_survives_weather_failures():
     assert result["eta_weather_corridor"] == []
 
 
-def test_live_forecast_service_resolves_previous_valid_service_day():
+def test_live_forecast_service_preserves_not_started_latest_journey():
     service = LiveForecastService()
     artifacts = Mock()
 
-    future_not_started = {
+    not_started_payload = {
         "success": True,
         "data": {
             "trainNumber": "12183",
             "status": "not-started",
             "startDate": "2026-09-07",
-            "route": [{"code": "AAA"}],
-        },
-    }
-
-    invalid_sunday = {
-        "success": False,
-        "data": {},
-    }
-
-    invalid_saturday = {
-        "success": True,
-        "data": {
-            "status": "not-started",
-            "startDate": "2026-09-05",
-            "route": [],
-        },
-    }
-
-    valid_friday = {
-        "success": True,
-        "data": {
-            "trainNumber": "12183",
-            "status": "completed",
-            "startDate": "2026-09-04",
             "route": [{"code": "AAA"}],
         },
     }
@@ -450,13 +426,9 @@ def test_live_forecast_service_resolves_previous_valid_service_day():
         "app.services.forecast.InferenceAdapter"
     ) as adapter_class:
         client = client_class.return_value
-
-        client.get_live_journey.side_effect = [
-            future_not_started,
-            invalid_sunday,
-            invalid_saturday,
-            valid_friday,
-        ]
+        client.get_live_journey.return_value = (
+            not_started_payload
+        )
 
         adapter = adapter_class.return_value
         adapter.run_payload.return_value = (
@@ -473,39 +445,18 @@ def test_live_forecast_service_resolves_previous_valid_service_day():
 
     assert (
         client.get_live_journey.call_count
-        == 4
+        == 1
     )
 
     assert (
-        client.get_live_journey.call_args_list[0].kwargs[
+        client.get_live_journey.call_args.kwargs[
             "journey_date"
         ]
         is None
     )
 
-    assert (
-        client.get_live_journey.call_args_list[1].kwargs[
-            "journey_date"
-        ]
-        == "2026-09-06"
-    )
-
-    assert (
-        client.get_live_journey.call_args_list[2].kwargs[
-            "journey_date"
-        ]
-        == "2026-09-05"
-    )
-
-    assert (
-        client.get_live_journey.call_args_list[3].kwargs[
-            "journey_date"
-        ]
-        == "2026-09-04"
-    )
-
     adapter.run_payload.assert_called_once_with(
-        valid_friday
+        not_started_payload
     )
 
 

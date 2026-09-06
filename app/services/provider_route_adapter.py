@@ -17,6 +17,21 @@ def _as_float(
         return None
 
 
+def _is_plausible_india_coordinate(
+    latitude: float | None,
+    longitude: float | None,
+) -> bool:
+    if (
+        latitude is None
+        or longitude is None
+    ):
+        return False
+
+    return (
+        6.0 <= latitude <= 38.0
+        and 68.0 <= longitude <= 98.0
+    )
+
 def _coordinates_from_dict(
     value: Any,
 ) -> tuple[
@@ -45,6 +60,12 @@ def _coordinates_from_dict(
             ),
         )
     )
+
+    if not _is_plausible_india_coordinate(
+        latitude,
+        longitude,
+    ):
+        return None, None
 
     return (
         latitude,
@@ -204,6 +225,7 @@ def extract_provider_route_data(
                     ),
                     "latitude": latitude,
                     "longitude": longitude,
+                    "status": station.get("status"),
                 }
             )
 

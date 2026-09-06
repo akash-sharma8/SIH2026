@@ -79,6 +79,31 @@ def build_route_map(
                 str(code).strip().upper()
             ] = station
 
+    def _normalize_route_status(
+        value: Any,
+    ) -> str:
+        return (
+            str(value or "")
+            .strip()
+            .lower()
+            .replace("_", "-")
+        )
+
+
+    has_provider_statuses = any(
+        isinstance(station, dict)
+        and bool(
+            str(
+                station.get("status")
+                or ""
+            ).strip()
+        )
+        for station in provider_stations
+    ) if isinstance(
+        provider_stations,
+        list,
+    ) else False
+
     route_stations: list[RouteStation] = []
 
     current_coordinates = None
@@ -90,7 +115,10 @@ def build_route_map(
             )
         )
 
-    if current_coordinates is not None:
+    if (
+        current_coordinates is not None
+        and not has_provider_statuses
+    ):
         route_stations.append(
             RouteStation(
                 code=current_coordinates.code,
@@ -180,6 +208,122 @@ def build_route_map(
                 coordinates,
             )
         )
+
+        prediction_station_codes = {
+        str(
+            _get_value(
+                _get_value(
+                    prediction,
+                    "station",
+                ),
+                "code",
+                "",
+            )
+        )
+        .strip()
+        .upper()
+        for prediction in predictions
+    }
+
+
+    if (
+        has_provider_statuses
+        and isinstance(
+            provider_stations,
+            list,
+        )
+    ):
+        for provider_station in provider_stations:
+            if not isinstance(
+                provider_station,
+                dict,
+            ):
+                continue
+
+            code = (
+                str(
+                    provider_station.get(
+                        "code"
+                    )
+                    or ""
+                )
+                .strip()
+                .upper()
+            )
+
+            if not code:
+                continue
+
+            latitude = provider_station.get(
+                "latitude"
+            )
+
+            longitude = provider_station.get(
+                "longitude"
+            )
+
+            if (
+                latitude is None
+                or longitude is None
+            ):
+                continue
+
+            provider_status = (
+                _normalize_route_status(
+                    provider_station.get(
+                        "status"
+                    )
+                )
+            )
+
+            if provider_status in {
+                "departed",
+                "passed",
+            }:
+                status = "PASSED"
+
+            elif (
+                provider_status
+                in {
+                    "at-station",
+                    "at station",
+                    "current",
+                }
+                or code
+                == str(
+                    current_station_code
+                    or ""
+                )
+                .strip()
+                .upper()
+            ):
+                status = "CURRENT"
+
+            else:
+                # Upcoming stations that are part
+                # of predictions are appended later
+                # with NEXT / UPCOMING / DESTINATION.
+                if code in prediction_station_codes:
+                    continue
+
+                status = "UPCOMING"
+
+            route_stations.append(
+                RouteStation(
+                    code=code,
+                    name=provider_station.get(
+                        "name"
+                    ),
+                    latitude=float(latitude),
+                    longitude=float(longitude),
+                    status=status,
+                    stations_ahead=(
+                        0
+                        if status == "CURRENT"
+                        else None
+                    ),
+                )
+            )
 
     last_index = (
         len(valid_prediction_stations) - 1

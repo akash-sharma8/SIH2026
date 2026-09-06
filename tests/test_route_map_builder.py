@@ -181,3 +181,91 @@ def test_provider_coordinates_are_primary():
 
     assert route.stations[1].code == "NDLS"
     assert route.stations[1].status == "DESTINATION"
+
+def test_build_route_map_includes_passed_current_and_upcoming_stations():
+    predictions = [
+        {
+            "station": {
+                "code": "VGLJ",
+                "name": "Jhansi",
+                "stations_ahead": 1,
+            }
+        },
+        {
+            "station": {
+                "code": "BPL",
+                "name": "Bhopal Jn",
+                "stations_ahead": 2,
+            }
+        },
+    ]
+
+    provider_route_data = {
+        "route": [
+            {
+                "code": "NDLS",
+                "name": "New Delhi",
+                "latitude": 28.642,
+                "longitude": 77.220,
+                "status": "departed",
+            },
+            {
+                "code": "AGC",
+                "name": "Agra Cantt",
+                "latitude": 27.159,
+                "longitude": 77.990,
+                "status": "departed",
+            },
+            {
+                "code": "GWL",
+                "name": "Gwalior Jn",
+                "latitude": 26.216,
+                "longitude": 78.183,
+                "status": "at-station",
+            },
+            {
+                "code": "VGLJ",
+                "name": "Jhansi",
+                "latitude": 25.444,
+                "longitude": 78.553,
+                "status": "upcoming",
+            },
+            {
+                "code": "BPL",
+                "name": "Bhopal Jn",
+                "latitude": 23.266,
+                "longitude": 77.413,
+                "status": "upcoming",
+            },
+        ]
+    }
+
+    route = build_route_map(
+        current_station_code="GWL",
+        predictions=predictions,
+        provider_route_data=provider_route_data,
+    )
+
+    statuses = [
+        station.status
+        for station in route.stations
+    ]
+
+    assert statuses == [
+        "PASSED",
+        "PASSED",
+        "CURRENT",
+        "NEXT",
+        "DESTINATION",
+    ]
+
+    assert [
+        station.code
+        for station in route.stations
+    ] == [
+        "NDLS",
+        "AGC",
+        "GWL",
+        "VGLJ",
+        "BPL",
+    ]

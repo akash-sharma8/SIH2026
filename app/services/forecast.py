@@ -305,17 +305,17 @@ class LiveForecastService:
                 authoritative=False,
             )
 
-            if not normalized_date:
-                api_result = (
-                    _resolve_latest_valid_journey(
-                        client=client,
-                        train_number=
-                            normalized_train_number,
-                        initial_result=
-                            api_result,
-                        max_lookback_days=7,
-                    )
-                )
+            # if not normalized_date:
+            #     api_result = (
+            #         _resolve_latest_valid_journey(
+            #             client=client,
+            #             train_number=
+            #                 normalized_train_number,
+            #             initial_result=
+            #                 api_result,
+            #             max_lookback_days=7,
+            #         )
+            #     )
 
             _live_payload_cache.set(
                 cache_key,

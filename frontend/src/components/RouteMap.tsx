@@ -59,6 +59,20 @@ type Props = {
     etaWeather?: StationWeatherAtETA[];
 };
 
+function isValidIndiaCoordinate(
+    latitude: number,
+    longitude: number,
+) {
+    return (
+        Number.isFinite(latitude)
+        && Number.isFinite(longitude)
+        && latitude >= 6
+        && latitude <= 38
+        && longitude >= 68
+        && longitude <= 98
+    );
+}
+
 
 function MapAutoFit({
     route,
@@ -69,14 +83,29 @@ function MapAutoFit({
 
     useEffect(() => {
         const points: L.LatLngExpression[] =
-            route.stations.map(
-                (station) => [
-                    station.latitude,
-                    station.longitude,
-                ],
-            );
+            route.stations
+                .filter((station) =>
+                    isValidIndiaCoordinate(
+                        station.latitude,
+                        station.longitude,
+                    ),
+                )
+                .map(
+                    (station) => [
+                        station.latitude,
+                        station.longitude,
+                    ],
+                );
 
-        if (route.current_position) {
+
+
+        if (
+            route.current_position
+            && isValidIndiaCoordinate(
+                route.current_position.latitude,
+                route.current_position.longitude,
+            )
+        ) {
             points.push([
                 route.current_position.latitude,
                 route.current_position.longitude,
@@ -168,8 +197,46 @@ export default function RouteMap({
     etaWeather = [],
 }: Props) {
 
+    const validStations = route.stations.filter(
+        (station) =>
+            isValidIndiaCoordinate(
+                station.latitude,
+                station.longitude,
+            ),
+    );
+
     const stationPoints =
-        route.stations.map(
+        validStations.map(
+            (station) =>
+                [
+                    station.latitude,
+                    station.longitude,
+                ] as [number, number],
+        );
+
+    const completedPoints = validStations
+        .filter(
+            (station) =>
+                station.status === "PASSED"
+                || station.status === "CURRENT",
+        )
+        .map(
+            (station) =>
+                [
+                    station.latitude,
+                    station.longitude,
+                ] as [number, number],
+        );
+
+    const pendingPoints = validStations
+        .filter(
+            (station) =>
+                station.status === "CURRENT"
+                || station.status === "NEXT"
+                || station.status === "UPCOMING"
+                || station.status === "DESTINATION",
+        )
+        .map(
             (station) =>
                 [
                     station.latitude,
@@ -178,11 +245,18 @@ export default function RouteMap({
         );
 
 
-    const center: [number, number] =
+    const hasValidCurrentPosition =
         route.current_position
+        && isValidIndiaCoordinate(
+            route.current_position.latitude,
+            route.current_position.longitude,
+        );
+
+    const center: [number, number] =
+        hasValidCurrentPosition
             ? [
-                route.current_position.latitude,
-                route.current_position.longitude,
+                route.current_position!.latitude,
+                route.current_position!.longitude,
             ]
             : stationPoints[0]
             ?? [22.5, 79.0];
@@ -195,247 +269,315 @@ export default function RouteMap({
     );
 
     return (
-        <div className="h-[520px] w-full overflow-hidden rounded-2xl border">
-            <MapContainer
-                center={center}
-                zoom={6}
-                scrollWheelZoom
-                className="h-full w-full"
-            >
-                <TileLayer
-                    attribution="&copy; OpenStreetMap contributors"
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-
-                <MapAutoFit
-                    route={route}
-                />
-
-
-                {stationPoints.length > 1 && (
-                    <Polyline
-                        positions={stationPoints}
-                        weight={4}
+        <div className="w-full overflow-hidden rounded-2xl border">
+            <div className="h-[520px]">
+                <MapContainer
+                    center={center}
+                    zoom={6}
+                    scrollWheelZoom
+                    className="h-full w-full"
+                >
+                    <TileLayer
+                        attribution="&copy; OpenStreetMap contributors"
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     />
-                )}
+
+                    <MapAutoFit
+                        route={route}
+                    />
 
 
-                {route.stations.map((station) => {
-                    const etaWeatherEntry =
-                        weatherByStation.get(
-                            station.code,
-                        );
+                    {completedPoints.length > 1 && (
+                        <Polyline
+                            positions={completedPoints}
+                            weight={5}
+                            color="#16a34a"
+                            opacity={0.9}
+                        />
+                    )}
 
-                    const weather =
-                        etaWeatherEntry?.weather;
+                    {pendingPoints.length > 1 && (
+                        <Polyline
+                            positions={pendingPoints}
+                            weight={4}
+                            dashArray="10 8"
+                            color="#2563eb"
+                            opacity={0.85}
+                        />
+                    )}
 
-                    const riskStyle =
-                        weatherRiskStyle(
-                            weather?.risk_level,
-                        );
 
-                    return (
-                        <CircleMarker
-                            key={`${station.code}-${station.status}`}
-                            center={[
-                                station.latitude,
-                                station.longitude,
-                            ]}
-                            radius={
-                                stationRadius(
-                                    station.status,
-                                )
-                                + riskStyle.radiusBoost
-                            }
-                            weight={
-                                station.status === "NEXT"
-                                    || station.status === "DESTINATION"
-                                    ? Math.max(
-                                        4,
-                                        riskStyle.weight,
+                    {validStations.map((station) => {
+                        const etaWeatherEntry =
+                            weatherByStation.get(
+                                station.code,
+                            );
+
+                        const weather =
+                            etaWeatherEntry?.weather;
+
+                        const riskStyle =
+                            weatherRiskStyle(
+                                weather?.risk_level,
+                            );
+
+                        return (
+                            <CircleMarker
+                                key={`${station.code}-${station.status}`}
+                                center={[
+                                    station.latitude,
+                                    station.longitude,
+                                ]}
+                                radius={
+                                    stationRadius(
+                                        station.status,
                                     )
-                                    : riskStyle.weight
-                            }
-                            fillOpacity={
-                                station.status === "UPCOMING"
-                                    ? 0.65
-                                    : 1
-                            }
+                                    + riskStyle.radiusBoost
+                                }
+                                weight={
+                                    station.status === "NEXT"
+                                        || station.status === "DESTINATION"
+                                        ? Math.max(
+                                            4,
+                                            riskStyle.weight,
+                                        )
+                                        : riskStyle.weight
+                                }
+                                color={
+                                    station.status === "PASSED"
+                                        ? "#15803d"
+                                        : station.status === "CURRENT"
+                                            ? "#1d4ed8"
+                                            : station.status === "NEXT"
+                                                ? "#2563eb"
+                                                : station.status === "DESTINATION"
+                                                    ? "#7c3aed"
+                                                    : "#64748b"
+                                }
+                                fillColor={
+                                    station.status === "PASSED"
+                                        ? "#22c55e"
+                                        : station.status === "CURRENT"
+                                            ? "#3b82f6"
+                                            : station.status === "NEXT"
+                                                ? "#60a5fa"
+                                                : station.status === "DESTINATION"
+                                                    ? "#a78bfa"
+                                                    : "#cbd5e1"
+                                }
+                                fillOpacity={
+                                    station.status === "UPCOMING"
+                                        ? 0.65
+                                        : 1
+                                }
+                            >
+                                <Tooltip
+                                    permanent={
+                                        station.status === "NEXT"
+                                        || station.status === "DESTINATION"
+                                        || station.status === "CURRENT"
+                                    }
+                                    direction="top"
+                                    offset={[0, -8]}
+                                >
+                                    <div className="text-xs font-semibold">
+                                        {station.status === "NEXT" && (
+                                            <>
+                                                NEXT •{" "}
+                                            </>
+                                        )}
+
+                                        {station.status === "DESTINATION" && (
+                                            <>
+                                                DEST •{" "}
+                                            </>
+                                        )}
+
+                                        {station.status === "CURRENT" && (
+                                            <>
+                                                CURRENT •{" "}
+                                            </>
+                                        )}
+
+                                        {station.status === "PASSED" && (
+                                            <>
+                                                PASSED •{" "}
+                                            </>
+                                        )}
+
+                                        {station.name
+                                            ?? station.code}
+                                    </div>
+                                </Tooltip>
+
+                                <Popup>
+                                    <div>
+                                        <strong>
+                                            {station.name
+                                                ?? station.code}
+                                        </strong>
+
+                                        <br />
+
+                                        Station:{" "}
+                                        {station.code}
+
+                                        <br />
+
+                                        Status:{" "}
+                                        {station.status}
+
+                                        {station.stations_ahead
+                                            != null && (
+                                                <>
+                                                    <br />
+
+                                                    Stations ahead:{" "}
+                                                    {
+                                                        station.stations_ahead
+                                                    }
+                                                </>
+                                            )}
+
+                                        {etaWeatherEntry && (
+                                            <>
+                                                <hr />
+
+                                                <strong>
+                                                    Weather near ETA
+                                                </strong>
+
+                                                <br />
+
+                                                Forecast:{" "}
+                                                {weather?.condition
+                                                    ?? "Unavailable"}
+
+                                                <br />
+
+                                                Risk:{" "}
+                                                {weather?.risk_level
+                                                    ?? "UNKNOWN"}
+
+                                                {weather?.temperature_c != null && (
+                                                    <>
+                                                        <br />
+                                                        Temperature:{" "}
+                                                        {weather.temperature_c}°C
+                                                    </>
+                                                )}
+
+                                                {weather
+                                                    ?.precipitation_probability_pct
+                                                    != null && (
+                                                        <>
+                                                            <br />
+                                                            Rain probability:{" "}
+                                                            {
+                                                                weather
+                                                                    .precipitation_probability_pct
+                                                            }
+                                                            %
+                                                        </>
+                                                    )}
+
+                                                <br />
+
+                                                Weather for predicted arrival:{" "}
+                                                {new Date(
+                                                    etaWeatherEntry.predicted_eta,
+                                                ).toLocaleTimeString()}
+                                            </>
+                                        )}
+                                    </div>
+                                </Popup>
+                            </CircleMarker>
+                        );
+                    })}
+
+
+                    {route.current_position && (
+                        <CircleMarker
+                            center={[
+                                route.current_position
+                                    .latitude,
+
+                                route.current_position
+                                    .longitude,
+                            ]}
+                            radius={13}
+                            weight={5}
+                            fillOpacity={1}
                         >
                             <Tooltip
-                                permanent={
-                                    station.status === "NEXT"
-                                    || station.status === "DESTINATION"
-                                    || station.status === "CURRENT"
-                                }
+                                permanent
                                 direction="top"
-                                offset={[0, -8]}
+                                offset={[0, -12]}
                             >
-                                <div className="text-xs font-semibold">
-                                    {station.status === "NEXT" && (
-                                        <>
-                                            NEXT •{" "}
-                                        </>
-                                    )}
-
-                                    {station.status === "DESTINATION" && (
-                                        <>
-                                            DEST •{" "}
-                                        </>
-                                    )}
-
-                                    {station.status === "CURRENT" && (
-                                        <>
-                                            CURRENT •{" "}
-                                        </>
-                                    )}
-
-                                    {station.name
-                                        ?? station.code}
+                                <div className="font-bold">
+                                    🚆 LIVE TRAIN
                                 </div>
                             </Tooltip>
 
                             <Popup>
                                 <div>
                                     <strong>
-                                        {station.name
-                                            ?? station.code}
+                                        Current Train Position
                                     </strong>
 
                                     <br />
 
-                                    Station:{" "}
-                                    {station.code}
+                                    Source:{" "}
+                                    {
+                                        route.current_position
+                                            .position_source
+                                    }
 
-                                    <br />
-
-                                    Status:{" "}
-                                    {station.status}
-
-                                    {station.stations_ahead
-                                        != null && (
+                                    {route.current_position
+                                        .accuracy_note && (
                                             <>
                                                 <br />
 
-                                                Stations ahead:{" "}
                                                 {
-                                                    station.stations_ahead
+                                                    route
+                                                        .current_position
+                                                        .accuracy_note
                                                 }
                                             </>
                                         )}
-
-                                    {etaWeatherEntry && (
-                                        <>
-                                            <hr />
-
-                                            <strong>
-                                                Weather near ETA
-                                            </strong>
-
-                                            <br />
-
-                                            Forecast:{" "}
-                                            {weather?.condition
-                                                ?? "Unavailable"}
-
-                                            <br />
-
-                                            Risk:{" "}
-                                            {weather?.risk_level
-                                                ?? "UNKNOWN"}
-
-                                            {weather?.temperature_c != null && (
-                                                <>
-                                                    <br />
-                                                    Temperature:{" "}
-                                                    {weather.temperature_c}°C
-                                                </>
-                                            )}
-
-                                            {weather
-                                                ?.precipitation_probability_pct
-                                                != null && (
-                                                    <>
-                                                        <br />
-                                                        Rain probability:{" "}
-                                                        {
-                                                            weather
-                                                                .precipitation_probability_pct
-                                                        }
-                                                        %
-                                                    </>
-                                                )}
-
-                                            <br />
-
-                                            Weather for predicted arrival:{" "}
-                                            {new Date(
-                                                etaWeatherEntry.predicted_eta,
-                                            ).toLocaleTimeString()}
-                                        </>
-                                    )}
                                 </div>
                             </Popup>
                         </CircleMarker>
-                    );
-                })}
+                    )}
 
+                </MapContainer>
+            </div>
+            <div className="flex flex-wrap gap-4 border-t bg-white px-4 py-3 text-xs">
+                <span className="font-semibold">
+                    Route status:
+                </span>
 
-                {route.current_position && (
-                    <CircleMarker
-                        center={[
-                            route.current_position
-                                .latitude,
+                <span className="flex items-center gap-1">
+                    <span className="inline-block h-2.5 w-2.5 rounded-full bg-green-500" />
+                    Completed journey
+                </span>
 
-                            route.current_position
-                                .longitude,
-                        ]}
-                        radius={13}
-                        weight={5}
-                        fillOpacity={1}
-                    >
-                        <Tooltip
-                            permanent
-                            direction="top"
-                            offset={[0, -12]}
-                        >
-                            <div className="font-bold">
-                                🚆 LIVE TRAIN
-                            </div>
-                        </Tooltip>
+                <span className="flex items-center gap-1">
+                    <span className="inline-block h-2.5 w-2.5 rounded-full bg-blue-500" />
+                    Current train
+                </span>
 
-                        <Popup>
-                            <div>
-                                <strong>
-                                    Current Train Position
-                                </strong>
+                <span className="flex items-center gap-1">
+                    <span className="inline-block h-[2px] w-6 border-t-2 border-dashed border-blue-500" />
+                    Pending journey
+                </span>
 
-                                <br />
+                <span className="flex items-center gap-1">
+                    <span className="inline-block h-2.5 w-2.5 rounded-full bg-violet-400" />
+                    Destination
+                </span>
+            </div>
 
-                                Source:{" "}
-                                {
-                                    route.current_position
-                                        .position_source
-                                }
-
-                                {route.current_position
-                                    .accuracy_note && (
-                                        <>
-                                            <br />
-
-                                            {
-                                                route
-                                                    .current_position
-                                                    .accuracy_note
-                                            }
-                                        </>
-                                    )}
-                            </div>
-                        </Popup>
-                    </CircleMarker>
-                )}
-
-            </MapContainer>
         </div>
     );
 }

@@ -279,6 +279,10 @@ export default function LiveTrainSearch() {
         && result.journey.state_source
         === "INSUFFICIENT_VERIFIED_OBSERVATIONS";
 
+    const isScheduledNotStarted =
+        result?.journey.state_source
+        === "SCHEDULED_NOT_STARTED";
+
     const hasPredictions =
         result !== null
         && result.predictions.length > 0;
@@ -538,9 +542,15 @@ export default function LiveTrainSearch() {
                             </p>
 
                             <p className="mt-2 text-lg font-bold text-gray-900">
-                                {result.journey.current_station_name
-                                    ?? result.journey.current_station_code
-                                    ?? "Unknown"}
+                                {isScheduledNotStarted
+                                    ? "Not applicable"
+                                    : result.journey.current_delay_min == null
+                                        ? "Unavailable"
+                                        : result.journey.current_delay_min < 0
+                                            ? `${Math.abs(result.journey.current_delay_min)} min early`
+                                            : result.journey.current_delay_min === 0
+                                                ? "On time"
+                                                : `${result.journey.current_delay_min} min late`}
                             </p>
 
                             {result.journey.current_station_code && (
@@ -591,11 +601,17 @@ export default function LiveTrainSearch() {
                                         nextPrediction.station.name
                                         ?? nextPrediction.station.code
                                     )
-                                    : isCompletedJourney
-                                        ? "Journey Completed"
-                                        : isWaitingForObservations
-                                            ? "Waiting for Live Data"
-                                            : "Unavailable"}
+                                    : isScheduledNotStarted
+                                        ? (
+                                            result.journey.source?.station_name
+                                            ?? result.journey.source?.station_code
+                                            ?? "Scheduled"
+                                        )
+                                        : isCompletedJourney
+                                            ? "Journey Completed"
+                                            : isWaitingForObservations
+                                                ? "Waiting for Live Data"
+                                                : "Unavailable"}
                             </p>
 
                             {nextPrediction && (
@@ -606,6 +622,107 @@ export default function LiveTrainSearch() {
                         </div>
 
                     </div>
+                    {isScheduledNotStarted
+                        && result.journey.schedule
+                        && result.journey.schedule.length > 0 && (
+                            <div className="rounded-2xl border bg-white p-5 shadow-sm">
+                                <div className="mb-4">
+                                    <h3 className="text-lg font-bold text-gray-900">
+                                        Scheduled Timetable
+                                    </h3>
+
+                                    <p className="mt-1 text-sm text-gray-500">
+                                        Planned station sequence for this journey.
+                                    </p>
+                                </div>
+
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full text-sm">
+                                        <thead>
+                                            <tr className="border-b bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
+                                                <th className="px-3 py-3">
+                                                    Station
+                                                </th>
+
+                                                <th className="px-3 py-3">
+                                                    Arrival
+                                                </th>
+
+                                                <th className="px-3 py-3">
+                                                    Departure
+                                                </th>
+
+                                                <th className="px-3 py-3">
+                                                    Platform
+                                                </th>
+
+                                                <th className="px-3 py-3">
+                                                    Distance
+                                                </th>
+                                            </tr>
+                                        </thead>
+
+                                        <tbody>
+                                            {result.journey.schedule.map(
+                                                (station, index) => (
+                                                    <tr
+                                                        key={`${station.station_code}-${index}`}
+                                                        className="border-b last:border-b-0"
+                                                    >
+                                                        <td className="px-3 py-3">
+                                                            <div className="font-semibold text-gray-900">
+                                                                {station.station_name
+                                                                    ?? station.station_code
+                                                                    ?? "Unknown"}
+                                                            </div>
+
+                                                            {station.station_code && (
+                                                                <div className="text-xs text-gray-500">
+                                                                    {station.station_code}
+                                                                </div>
+                                                            )}
+                                                        </td>
+
+                                                        <td className="px-3 py-3 text-gray-700">
+                                                            {station.scheduled_arrival
+                                                                ? new Date(
+                                                                    station.scheduled_arrival,
+                                                                ).toLocaleTimeString([], {
+                                                                    hour: "2-digit",
+                                                                    minute: "2-digit",
+                                                                })
+                                                                : "—"}
+                                                        </td>
+
+                                                        <td className="px-3 py-3 text-gray-700">
+                                                            {station.scheduled_departure
+                                                                ? new Date(
+                                                                    station.scheduled_departure,
+                                                                ).toLocaleTimeString([], {
+                                                                    hour: "2-digit",
+                                                                    minute: "2-digit",
+                                                                })
+                                                                : "—"}
+                                                        </td>
+
+                                                        <td className="px-3 py-3 text-gray-700">
+                                                            {station.platform ?? "—"}
+                                                        </td>
+
+                                                        <td className="px-3 py-3 text-gray-700">
+                                                            {station.distance_from_source_km != null
+                                                                ? `${station.distance_from_source_km} km`
+                                                                : "—"}
+                                                        </td>
+                                                    </tr>
+                                                ),
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+
                     {isCompletedJourney && (
                         <div className="rounded-xl border border-green-200 bg-green-50 p-4">
                             <p className="font-semibold text-green-900">
@@ -624,6 +741,8 @@ export default function LiveTrainSearch() {
                             )}
                         </div>
                     )}
+
+
 
                     {isWaitingForObservations && (
                         <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4">
@@ -655,20 +774,21 @@ export default function LiveTrainSearch() {
                         </div>
                     )}
                     {result.backend && (
-    <p className="text-xs text-gray-500">
-        Live data cache:{" "}
-        {result.backend.provider_payload_cache}
-    </p>
-)}
+                        <p className="text-xs text-gray-500">
+                            Live data cache:{" "}
+                            {result.backend.provider_payload_cache}
+                        </p>
+                    )}
 
-{hasLiveResult
-    && !isCompletedJourney
-    && !isWaitingForObservations && (
-        <div className="flex items-center gap-2 text-xs text-gray-500">
-            <span className="inline-block h-2 w-2 rounded-full bg-green-500" />
-            <span>Auto-refreshing every 60 seconds</span>
-        </div>
-    )}
+                    {hasLiveResult
+                        && !isCompletedJourney
+                        && !isWaitingForObservations
+                        && !isScheduledNotStarted && (
+                            <div className="flex items-center gap-2 text-xs text-gray-500">
+                                <span className="inline-block h-2 w-2 rounded-full bg-green-500" />
+                                <span>Auto-refreshing every 60 seconds</span>
+                            </div>
+                        )}
                 </div>
             )}
 
@@ -784,33 +904,35 @@ export default function LiveTrainSearch() {
             {result && (
                 <div className="grid gap-6 xl:grid-cols-[1.6fr_1fr]">
 
-                    {result.route && (
-                        // Result container
-                        <div className="space-y-4 rounded-xl border p-4 sm:p-5">
-                            <div>
-                                <h3 className="text-xl font-bold">
-                                    Live Route Map
-                                </h3>
+                    {!isScheduledNotStarted
+                        && result.route && (
+                            // Result container
+                            <div className="space-y-4 rounded-xl border p-4 sm:p-5">
+                                <div>
+                                    <h3 className="text-xl font-bold">
+                                        Live Route Map
+                                    </h3>
 
-                                <p className="mt-1 text-sm text-gray-600">
-                                    Live train position,
-                                    upcoming stations and
-                                    weather risk along the route.
-                                </p>
+                                    <p className="mt-1 text-sm text-gray-600">
+                                        Live train position,
+                                        upcoming stations and
+                                        weather risk along the route.
+                                    </p>
+                                </div>
+
+                                <RouteMap
+                                    key={`${result.journey.train_number}-${result.route.current_position?.latitude ?? "na"}-${result.route.current_position?.longitude ?? "na"}`}
+                                    route={result.route}
+                                    etaWeather={
+                                        result.eta_weather_corridor
+                                    }
+                                />
                             </div>
-
-                            <RouteMap
-                                key={`${result.journey.train_number}-${result.route.current_position?.latitude ?? "na"}-${result.route.current_position?.longitude ?? "na"}`}
-                                route={result.route}
-                                etaWeather={
-                                    result.eta_weather_corridor
-                                }
-                            />
-                        </div>
-                    )}
+                        )}
 
 
-                    {result.eta_weather_corridor.length > 0 && (
+                    {!isScheduledNotStarted
+    && result.eta_weather_corridor.length > 0 && (
                         <div className="space-y-3">
 
                             <div>

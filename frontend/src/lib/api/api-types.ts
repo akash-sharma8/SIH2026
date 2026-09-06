@@ -84,10 +84,38 @@ export interface StationPrediction {
   comparison_only: ProviderComparison;
 }
 
+export interface ScheduledJourneyStation {
+  station_code: string | null;
+  station_name: string | null;
+  scheduled_arrival: string | null;
+  scheduled_departure: string | null;
+  platform: string | null;
+  distance_from_source_km: number | null;
+}
+
+export interface ScheduledJourneyEndpoint {
+  station_code: string | null;
+  station_name: string | null;
+  scheduled_departure?: string | null;
+  scheduled_arrival?: string | null;
+}
+
+export type JourneyStateSource =
+  | "SCHEDULED_NOT_STARTED"
+  | "NORMALIZED_LIVE_JOURNEY_NO_UPCOMING_STATIONS"
+  | "INSUFFICIENT_VERIFIED_OBSERVATIONS"
+  | string;
+
 export interface JourneyInfo {
   journey_id: string;
   train_number: string;
   train_name: string | null;
+
+  journey_start_date?: string | null;
+
+  source?: ScheduledJourneyEndpoint | null;
+  destination?: ScheduledJourneyEndpoint | null;
+  schedule?: ScheduledJourneyStation[];
 
   current_station_code: string | null;
   current_station_name: string | null;
@@ -96,9 +124,8 @@ export interface JourneyInfo {
 
   observed_stations: number;
   upcoming_stations: number;
-  state_source: string;
+  state_source: JourneyStateSource;
 }
-
 export interface SystemArchitecture {
   next_station: string;
   later_stations: string;

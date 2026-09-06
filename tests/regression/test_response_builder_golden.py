@@ -183,7 +183,90 @@ def test_completed_journey_bypasses_models():
         ==
         "NORMALIZED_LIVE_JOURNEY_NO_UPCOMING_STATIONS"
     )
+def test_not_started_journey_bypasses_models_with_scheduled_state():
+    with DEMO_PATH.open("r", encoding="utf-8") as file:
+        api_result = json.load(file)
 
+    normalized_df = normalize_live_journey(
+        api_result,
+        collected_at="2026-09-01T00:00:00+00:00",
+    )
+
+    normalized_df[
+        "journey_status"
+    ] = "not-started"
+
+    normalized_df[
+        "arrival_is_observed"
+    ] = False
+
+    normalized_df[
+        "departure_is_observed"
+    ] = False
+
+    artifacts = load_artifacts()
+
+    def should_not_run(_df):
+        raise AssertionError(
+            "Hybrid inference must not run "
+            "before the journey has started."
+        )
+
+    actual = build_hybrid_eta_service_response(
+        normalized_journey_df=normalized_df,
+        hybrid_predictor=should_not_run,
+        model2=artifacts.model2,
+        model2_feature_order=
+            artifacts.model2_metadata["features"],
+        model2_categorical_features=
+            artifacts.model2_metadata[
+                "categorical_features"
+            ],
+    )
+
+    assert actual["success"] is True
+    assert actual["predictions"] == []
+
+    assert (
+        actual["journey"]["state_source"]
+        == "SCHEDULED_NOT_STARTED"
+    )
+
+    assert (
+        actual["journey"]["observed_stations"]
+        == 0
+    )
+
+    assert (
+        actual["message"]
+        ==
+        "This journey is scheduled but has not started yet."
+    )
+    assert actual["journey"]["current_station_code"] is None
+    assert actual["journey"]["current_station_name"] is None
+
+    assert (
+        actual["journey"]["journey_start_date"]
+        is not None
+    )
+
+    assert "schedule" in actual["journey"]
+
+    schedule = actual["journey"]["schedule"]
+
+    assert isinstance(schedule, list)
+    assert len(schedule) == len(normalized_df)
+
+    assert schedule[0]["station_code"] == str(
+        normalized_df.iloc[0]["station_code"]
+    )
+
+    assert schedule[-1]["station_code"] == str(
+        normalized_df.iloc[-1]["station_code"]
+    )
+
+    assert "scheduled_arrival" in schedule[0]
+    assert "scheduled_departure" in schedule[0]
 
 def test_insufficient_verified_observations_bypasses_models():
     with DEMO_PATH.open("r", encoding="utf-8") as file:

@@ -77,6 +77,8 @@ def build_hybrid_eta_service_response_v1(
         .astype(bool)
     )
 
+
+
     upcoming_count = int(
         upcoming_mask.sum()
     )
@@ -85,9 +87,38 @@ def build_hybrid_eta_service_response_v1(
         observed_mask.sum()
     )
 
+    journey_status = (
+        str(
+            normalized_journey_df[
+                "journey_status"
+            ].iloc[0]
+            if (
+                "journey_status"
+                in normalized_journey_df.columns
+                and not normalized_journey_df.empty
+            )
+            else ""
+        )
+        .strip()
+        .lower()
+        .replace("_", "-")
+    )
+
     preflight_state = None
 
-    if upcoming_count == 0:
+    if journey_status in {
+        "not-started",
+        "not started",
+        "scheduled",
+    }:
+        preflight_state = (
+            "SCHEDULED_NOT_STARTED"
+        )
+
+    if preflight_state == "SCHEDULED_NOT_STARTED":
+        predictions_df = pd.DataFrame()
+
+    elif upcoming_count == 0:
         preflight_state = (
             "NO_UPCOMING_STATIONS"
         )
@@ -126,6 +157,9 @@ def build_hybrid_eta_service_response_v1(
                 .iloc[-1]
             )
 
+        elif preflight_state == "SCHEDULED_NOT_STARTED":
+            current_row = None
+
         else:
             current_row = route_df.iloc[-1]
 
@@ -156,6 +190,9 @@ def build_hybrid_eta_service_response_v1(
         train_name = first_non_null(
             "train_name"
         )
+        journey_start_date = first_non_null(
+            "journey_start_date"
+        )
 
         if journey_id is None:
             raise ValueError(
@@ -168,36 +205,104 @@ def build_hybrid_eta_service_response_v1(
             )
 
         current_station_code = (
-            current_row.get(
-                "station_code"
-            )
+            current_row.get("station_code")
+            if current_row is not None
+            else None
         )
 
         current_station_name = (
-            current_row.get(
-                "station_name"
-            )
+            current_row.get("station_name")
+            if current_row is not None
+            else None
         )
 
         current_arrival = (
-            current_row.get(
-                "actual_arrival"
-            )
+            current_row.get("actual_arrival")
+            if current_row is not None
+            else None
         )
 
         current_delay = (
-            current_row.get(
-                "arrival_delay_min"
-            )
+            current_row.get("arrival_delay_min")
+            if current_row is not None
+            else None
         )
 
         if (
-            current_delay is None
-            or pd.isna(current_delay)
+            current_row is not None
+            and (
+                current_delay is None
+                or pd.isna(current_delay)
+            )
         ):
             current_delay = current_row.get(
                 "calculated_arrival_delay_min"
             )
+
+        schedule = []
+        source_row = None
+        destination_row = None
+
+        if preflight_state == "SCHEDULED_NOT_STARTED":
+            sort_column = (
+                "halt_order"
+                if "halt_order" in route_df.columns
+                else "station_sequence"
+            )
+
+            scheduled_rows = (
+                route_df
+                .sort_values(sort_column)
+                .reset_index(drop=True)
+            )
+
+            source_row = (
+                scheduled_rows.iloc[0]
+                if not scheduled_rows.empty
+                else None
+            )
+
+            destination_row = (
+                scheduled_rows.iloc[-1]
+                if not scheduled_rows.empty
+                else None
+            )
+
+            for _, row in scheduled_rows.iterrows():
+                schedule.append(
+                    {
+                        "station_code": (
+                            str(row.get("station_code"))
+                            if pd.notna(row.get("station_code"))
+                            else None
+                        ),
+                        "station_name": (
+                            str(row.get("station_name"))
+                            if pd.notna(row.get("station_name"))
+                            else None
+                        ),
+                        "scheduled_arrival":
+                            timestamp_to_indian_iso(
+                                row.get("scheduled_arrival")
+                            ),
+                        "scheduled_departure":
+                            timestamp_to_indian_iso(
+                                row.get("scheduled_departure")
+                            ),
+                        "platform": (
+                            str(row.get("platform"))
+                            if pd.notna(row.get("platform"))
+                            else None
+                        ),
+                        "distance_from_source_km":
+                            safe_json_number(
+                                row.get(
+                                    "distance_from_source_km"
+                                ),
+                                digits=1,
+                            ),
+                    }
+                )
 
         return {
             "success": True,
@@ -233,6 +338,89 @@ def build_hybrid_eta_service_response_v1(
                     else None
                 ),
 
+                "journey_start_date": (
+                    timestamp_to_indian_iso(
+                        journey_start_date
+                    )
+                    if journey_start_date is not None
+                    else None
+                ),
+
+                "schedule": schedule,
+                "source": (
+                    {
+                        "station_code": (
+                            str(source_row.get("station_code"))
+                            if source_row is not None
+                            and pd.notna(
+                                source_row.get("station_code")
+                            )
+                            else None
+                        ),
+                        "station_name": (
+                            str(source_row.get("station_name"))
+                            if source_row is not None
+                            and pd.notna(
+                                source_row.get("station_name")
+                            )
+                            else None
+                        ),
+                        "scheduled_departure":
+                            timestamp_to_indian_iso(
+                                source_row.get(
+                                    "scheduled_departure"
+                                )
+                            )
+                            if source_row is not None
+                            else None,
+                    }
+                    if source_row is not None
+                    else None
+                ),
+
+                "destination": (
+                    {
+                        "station_code": (
+                            str(
+                                destination_row.get(
+                                    "station_code"
+                                )
+                            )
+                            if destination_row is not None
+                            and pd.notna(
+                                destination_row.get(
+                                    "station_code"
+                                )
+                            )
+                            else None
+                        ),
+                        "station_name": (
+                            str(
+                                destination_row.get(
+                                    "station_name"
+                                )
+                            )
+                            if destination_row is not None
+                            and pd.notna(
+                                destination_row.get(
+                                    "station_name"
+                                )
+                            )
+                            else None
+                        ),
+                        "scheduled_arrival":
+                            timestamp_to_indian_iso(
+                                destination_row.get(
+                                    "scheduled_arrival"
+                                )
+                            )
+                            if destination_row is not None
+                            else None,
+                    }
+                    if destination_row is not None
+                    else None
+                ),
+
                 "current_station_code": (
                     str(current_station_code)
                     if current_station_code
@@ -265,6 +453,9 @@ def build_hybrid_eta_service_response_v1(
                     upcoming_count,
 
                 "state_source": (
+                    "SCHEDULED_NOT_STARTED"
+                    if preflight_state == "SCHEDULED_NOT_STARTED"
+                    else
                     "NORMALIZED_LIVE_JOURNEY_NO_UPCOMING_STATIONS"
                     if preflight_state == "NO_UPCOMING_STATIONS"
                     else
@@ -275,6 +466,9 @@ def build_hybrid_eta_service_response_v1(
             "predictions": [],
 
             "message": (
+                "This journey is scheduled but has not started yet."
+                if preflight_state == "SCHEDULED_NOT_STARTED"
+                else
                 "No upcoming stations are available "
                 "for this journey."
                 if preflight_state == "NO_UPCOMING_STATIONS"
