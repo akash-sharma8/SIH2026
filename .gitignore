@@ -1,0 +1,31 @@
+# Python environments
+.venv/
+venv/
+env/
+**/.venv/
+**/.venv_*/
+**/venv/
+**/env/
+
+# ML verification / handoff working environments
+**/.venv_mlcheck/
+ml_final_integration/
+
+# Python cache
+__pycache__/
+**/__pycache__/
+*.py[cod]
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Frontend
+frontend/node_modules/
+frontend/.next/
+
+# Local/cache files
+.pytest_cache/
+.mypy_cache/
+.coverage

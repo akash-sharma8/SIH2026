@@ -1,0 +1,2 @@
+artifacts/models/model2_station_eta_catboost.cbm filter=lfs diff=lfs merge=lfs -text
+ml_handoff/raileta_space/models/model2_station_eta_catboost.cbm filter=lfs diff=lfs merge=lfs -text

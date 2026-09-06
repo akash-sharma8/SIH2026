@@ -1,0 +1,109 @@
+{
+  "system": {
+    "name": "SIH 26028 Dynamic Coaching Train ETA Forecasting System",
+    "version": "1.0.0-prototype",
+    "created_at_utc": "2026-08-30T07:51:57.810873+00:00",
+    "problem": "Dynamic prediction of arrival delay and ETA for coaching trains."
+  },
+  "operational_routing": {
+    "PRE_DEPARTURE": {
+      "model": "MODEL_1",
+      "output": "Destination-delay prior, risk level, and uncertainty interval",
+      "condition": "No verified station arrival exists and complete pre-departure features are available"
+    },
+    "RUNNING_NEXT_STATION": {
+      "model": "MODEL_2",
+      "output": "Immediate next-station delay and ETA",
+      "condition": "At least one verified station arrival and at least one upcoming station exist"
+    },
+    "RUNNING_LATER_STATIONS": {
+      "model": "MODEL_3",
+      "output": "Multi-horizon station delay and ETA",
+      "condition": "stations_ahead >= 2"
+    },
+    "COMPLETED": {
+      "model": null,
+      "output": "No prediction",
+      "condition": "No upcoming station exists"
+    }
+  },
+  "model_1": {
+    "role": "Pre-departure destination-delay prior",
+    "model_type": "LightGBM regression",
+    "artifact": "/content/drive/MyDrive/SIH_26028_Model_1/models/model1_predeparture_lightgbm.txt",
+    "metadata": "/content/drive/MyDrive/SIH_26028_Model_1/models/model1_predeparture_metadata.json",
+    "dataset": "Kaggle competition: indian-railways-predict-train-delay",
+    "verified_ntes_history": false,
+    "training_rows": 1070215,
+    "validation_year": 2023,
+    "test_year": 2024,
+    "test_rows": 214247,
+    "test_mae_min": 32.50490150825948,
+    "baseline_test_mae_min": 47.01652298515265,
+    "improvement_pct": 30.864939718055705,
+    "interval_radius_min": 86.03591128752862,
+    "test_interval_coverage_pct": 90.06380486074484,
+    "synthetic_dynamic_component_deployed": false
+  },
+  "model_2": {
+    "role": "Immediate next-station specialist",
+    "model_type": "CatBoost regression",
+    "artifact": "/content/drive/MyDrive/SIH26028_Model2/station_eta_catboost_safe_v2.cbm",
+    "metadata": "/content/drive/MyDrive/SIH26028_Model2/station_eta_model_metadata.json",
+    "training_source": "RSTGCN station transitions",
+    "source_period": "September 2024",
+    "cross_domain_test_transitions": 125,
+    "cross_domain_test_mae_min": 8.308,
+    "cross_domain_baseline_mae_min": 11.797,
+    "cross_domain_improvement_pct": 29.57,
+    "within_10_min_pct": 71.2,
+    "interval_radius_min": 22.48102655203878,
+    "early_running_policy": "Valid prediction allowed with warning"
+  },
+  "model_3": {
+    "role": "Live multi-horizon upcoming-station ETA prediction",
+    "model_type": "Guarded residual CatBoost regression",
+    "artifact": "/content/drive/MyDrive/SIH_26028_Model_3/models/model3_guarded_residual_catboost.cbm",
+    "configuration": "/content/drive/MyDrive/SIH_26028_Model_3/models/model3_guarded_residual_config.json",
+    "training_source": "Leakage-safe verified RailRadar station events",
+    "historical_journeys": 26,
+    "trains": 5,
+    "verified_arrival_labels": 551,
+    "training_pairs": 7808,
+    "test_pairs": 1533,
+    "test_mae_min": 16.971,
+    "baseline_test_mae_min": 17.548,
+    "test_improvement_pct": 3.29,
+    "residual_alpha": 0.35
+  },
+  "hybrid_evaluation": {
+    "replay_journey": "12952_2026-08-28",
+    "cutoff_station": "NAD",
+    "future_stations": 5,
+    "baseline_mae_min": 9.5,
+    "hybrid_mae_min": 5.591889207459313,
+    "improvement_pct": 41.138008342533546,
+    "interval_coverage_pct": 100.0,
+    "evidence_file": "/content/drive/MyDrive/SIH_26028_Model_3/integration/hybrid_final_replay_evaluation.csv"
+  },
+  "leakage_controls": [
+    "Upcoming provider estimates are separated from verified actual arrivals.",
+    "Future actual arrivals are hidden during historical replay.",
+    "Model 1 excludes delay_minutes, is_delayed, and primary_delay_cause.",
+    "All validation and test splits are chronological.",
+    "Provider ETA appears only as a comparison field."
+  ],
+  "known_limitations": [
+    "Model 1 uses a Kaggle competition dataset, not verified NTES operational records.",
+    "Model 1 requires operational features that are not currently supplied by RailRadar.",
+    "Model 2 was trained primarily with non-negative delays.",
+    "Model 3 currently contains only 26 historical journeys from five trains.",
+    "All uncertainty intervals require ongoing recalibration as new journeys are collected."
+  ],
+  "production_growth_plan": [
+    "Run scheduled leakage-safe collection for a wider train fleet.",
+    "Retrain Model 3 after collecting thousands of journeys.",
+    "Calibrate metrics by train category, route, season, and prediction horizon.",
+    "Add monitoring for prediction drift, missing features, and API failures."
+  ]
+}

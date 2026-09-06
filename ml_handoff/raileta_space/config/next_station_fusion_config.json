@@ -1,0 +1,24 @@
+{
+  "version": "0.1.0-prototype",
+  "task": "Immediate next-station arrival delay",
+  "weight_selection": "Validation transitions only",
+  "weights": {
+    "model2": 1.0,
+    "model3": 0.0,
+    "recent_delay_baseline": 0.0
+  },
+  "model2_source_period": "September 2024",
+  "cross_domain_period": "August 2026",
+  "cross_domain_validation_transitions": 37,
+  "cross_domain_test_transitions": 125,
+  "test_mae_min": 8.308360098023579,
+  "baseline_test_mae_min": 11.797422222222224,
+  "next_station_interval_quantile": 0.9,
+  "next_station_interval_radius_min": 22.48102655203878,
+  "limitations": [
+    "Fusion validation contains only 37 transitions",
+    "Cross-domain test contains only 125 transitions",
+    "Model 2 training labels are non-negative",
+    "Early arrival predictions require additional calibration"
+  ]
+}

@@ -1,0 +1,31 @@
+{
+    "model_name": "Station ETA CatBoost Safe V2",
+    "test_mae_minutes": 6.8556,
+    "persistence_mae_minutes": 9.8452,
+    "improvement_over_persistence_pct": 30.37,
+    "features": [
+        "current_delay",
+        "prev_delay_1",
+        "prev_delay_2",
+        "delay_change_prev",
+        "delay_trend_2",
+        "segment_distance",
+        "scheduled_segment_minutes",
+        "scheduled_segment_speed",
+        "station_sequence",
+        "route_progress_safe",
+        "departure_hour",
+        "day_of_week",
+        "is_weekend",
+        "train",
+        "station",
+        "next_station"
+    ],
+    "categorical_features": [
+        "train",
+        "station",
+        "next_station"
+    ],
+    "target": "target_next_delay",
+    "data_period": "September 2024"
+}

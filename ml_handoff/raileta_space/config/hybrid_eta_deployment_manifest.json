@@ -1,0 +1,84 @@
+{
+  "system": {
+    "name": "SIH 26028 Hybrid Dynamic ETA System",
+    "version": "0.2.0-prototype",
+    "created_at_utc": "2026-08-30T08:27:25.791590+00:00",
+    "task": "Predict station-level arrival delay and ETA for upcoming stations while a coaching train is already running."
+  },
+  "routing": {
+    "immediate_next_station": {
+      "engine": "Model 2",
+      "model_type": "CatBoost",
+      "selection_rule": "stations_ahead == 1",
+      "validation_selected_weight": 1.0,
+      "interval_radius_min": 22.48102655203878,
+      "early_running_policy": "Allow valid prediction with explicit warning"
+    },
+    "later_stations": {
+      "engine": "Model 3",
+      "model_type": "Guarded residual CatBoost",
+      "selection_rule": "stations_ahead >= 2",
+      "residual_alpha": 0.35,
+      "fallback_for_next_station": true
+    },
+    "provider_forecasts": {
+      "usage": "comparison_only",
+      "used_as_model_feature": false,
+      "used_as_training_target_for_upcoming_rows": false
+    }
+  },
+  "model_artifacts": {
+    "model2": "/content/drive/MyDrive/SIH26028_Model2/station_eta_catboost_safe_v2.cbm",
+    "model2_metadata": "/content/drive/MyDrive/SIH26028_Model2/station_eta_model_metadata.json",
+    "model3": "/content/drive/MyDrive/SIH_26028_Model_3/models/model3_guarded_residual_catboost.cbm",
+    "model3_config": "/content/drive/MyDrive/SIH_26028_Model_3/models/model3_guarded_residual_config.json",
+    "next_station_fusion_config": "/content/drive/MyDrive/SIH_26028_Model_3/integration/next_station_fusion_config.json"
+  },
+  "evaluation": {
+    "model2_cross_domain_test": {
+      "transitions": 125,
+      "mae_min": 8.308,
+      "baseline_mae_min": 11.797,
+      "improvement_pct": 29.57,
+      "within_10_min_pct": 71.2
+    },
+    "model3_multi_horizon_test": {
+      "pairs": 1533,
+      "mae_min": 16.971,
+      "baseline_mae_min": 17.548,
+      "improvement_pct": 3.29
+    },
+    "final_hybrid_replay": {
+      "journey_id": "12952_2026-08-28",
+      "cutoff_station": "NAD",
+      "future_stations": 5,
+      "baseline_mae_min": 9.5,
+      "hybrid_mae_min": 5.591889,
+      "improvement_min": 3.908111,
+      "improvement_pct": 41.138008,
+      "interval_coverage_pct": 100.0
+    }
+  },
+  "data_scope": {
+    "model3_historical_journeys": 26,
+    "model3_trains": 5,
+    "model3_verified_arrival_labels": 551,
+    "model3_training_pairs": 7808,
+    "model3_unique_stations": 103,
+    "tracked_train_registry_size": 10792
+  },
+  "safety": {
+    "leakage_safe_parser": true,
+    "future_actual_arrivals_hidden": true,
+    "future_provider_estimates_excluded_from_features": true,
+    "chronological_train_validation_test_split": true,
+    "duplicate_protection": true
+  },
+  "limitations": [
+    "Model 3 currently contains only 26 historical journeys from 5 trains.",
+    "Model 2 cross-domain validation contains only 37 transitions and its test contains 125.",
+    "Model 2 was trained primarily with non-negative delay labels; early-running predictions carry an explicit warning.",
+    "Model 3 test improvement is modest and requires more historical collection before production use.",
+    "Prediction intervals are prototype intervals and must be recalibrated as more journeys are collected."
+  ]
+}

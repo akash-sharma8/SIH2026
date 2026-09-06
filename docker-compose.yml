@@ -1,0 +1,17 @@
+services:
+  raileta-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    image: raileta-backend:local
+
+    container_name: raileta-backend
+
+    env_file:
+      - .env
+
+    ports:
+      - "8000:8000"
+
+    restart: unless-stopped

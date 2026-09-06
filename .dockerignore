@@ -1,0 +1,15 @@
+# Local / isolated environments
+.venv_mlcheck
+**/.venv_mlcheck
+
+# ML handoff scratch / verification package
+ml_final_integration
+
+# Frontend is deployed separately
+frontend
+
+# Local editor / OS files
+.vscode
+.idea
+.DS_Store
+Thumbs.db

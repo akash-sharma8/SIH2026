@@ -1,0 +1,2 @@
+model,evaluation,rows,journeys,mae_min,rmse_min,median_ae_min,p90_ae_min,mean_signed_error_min,within_15_min_pct,within_30_min_pct,within_60_min_pct,interval_coverage_pct,mean_interval_width_min,duplicate_journey_ids,max_saved_error_difference_min
+Model 1 pre-departure LightGBM,saved_2024_test_predictions,214247,214247,32.50490150825948,47.907652671282705,18.339048981571125,85.84946030559051,-4.4061673706492295,43.04237632265563,64.8923905585609,80.59202695953735,90.06380486074484,155.38968793142675,0,5.684341886080802e-14
