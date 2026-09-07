@@ -3,7 +3,8 @@ import time
 from typing import Any
 
 import requests
-
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from app.core.config import Settings
 from app.core.errors import (
     JourneyNotFoundError,
@@ -19,7 +20,7 @@ class RailRadarClient:
     def __init__(
         self,
         settings: Settings,
-        timeout_seconds: int = 30,
+        timeout_seconds: int = 10,
     ) -> None:
         self.base_url = (
             settings.railradar_base_url
@@ -33,6 +34,43 @@ class RailRadarClient:
 
         self.timeout_seconds = (
             timeout_seconds
+        )
+
+        retry_strategy = Retry(
+            total=2,
+            connect=2,
+            read=1,
+            status=2,
+            backoff_factor=0.5,
+            status_forcelist=[
+                429,
+                502,
+                503,
+                504,
+            ],
+            allowed_methods=[
+                "GET",
+            ],
+            raise_on_status=False,
+            respect_retry_after_header=True,
+        )
+
+        adapter = HTTPAdapter(
+            max_retries=retry_strategy,
+            pool_connections=20,
+            pool_maxsize=50,
+        )
+
+        self.session = requests.Session()
+
+        self.session.mount(
+            "https://",
+            adapter,
+        )
+
+        self.session.mount(
+            "http://",
+            adapter,
         )
 
     def get_live_journey(
@@ -89,10 +127,42 @@ class RailRadarClient:
             params=params,
         )
 
+    def search_trains(
+        self,
+        query: str,
+        limit: int = 10,
+    ) -> dict[str, Any]:
+        query = str(
+            query or ""
+        ).strip()
+
+        if not query:
+            raise ValueError(
+                "Train search query is required."
+            )
+
+        limit = max(
+            1,
+            min(
+                int(limit),
+                20,
+            ),
+        )
+
+        return self._get(
+            endpoint="/lookup/search/trains",
+            params={
+                "q": query,
+                "limit": limit,
+            },
+            read_timeout_seconds=4,
+        )
+
     def _get(
         self,
         endpoint: str,
         params: dict | None = None,
+        read_timeout_seconds: float | None = None,
     ) -> dict[str, Any]:
         if not self.base_url:
             raise ProviderConfigurationError(
@@ -134,11 +204,18 @@ class RailRadarClient:
         )
 
         try:
-            response = requests.get(
+            response = self.session.get(
                 url,
                 headers=headers,
                 params=params,
-                timeout=self.timeout_seconds,
+                timeout=(
+                    3.05,
+                    (
+                        read_timeout_seconds
+                        if read_timeout_seconds is not None
+                        else self.timeout_seconds
+                    ),
+                ),
             )
 
         except requests.Timeout as exc:

@@ -1,5 +1,5 @@
 "use client";
-
+import Link from "next/link";
 import { useState } from "react";
 import LiveTrainSearch from "@/components/LiveTrainSearch";
 import PredepartureForecast from "@/components/PredepartureForecast";
@@ -21,6 +21,8 @@ type ForecastMode =
 export default function Home() {
   const [mode, setMode] =
     useState<ForecastMode>("live");
+
+
 
   return (
     <main className="min-h-screen bg-gray-50 px-3 py-4 text-gray-900 sm:px-4 sm:py-6 lg:py-8">
@@ -44,10 +46,32 @@ export default function Home() {
               </p>
             </div>
 
-            <div className="rounded-full border bg-gray-50 px-4 py-2 text-sm font-medium">
-              AI Forecasting System
-            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="rounded-full border bg-gray-50 px-4 py-2 text-sm font-medium">
+                AI Forecasting System
+              </div>
 
+              <Link
+                href="/model-intelligence"
+                className="rounded-full border bg-white px-4 py-2 text-sm font-semibold text-gray-800 transition hover:bg-gray-50"
+              >
+                Model Intelligence
+              </Link>
+
+              <Link
+                href="/station-display"
+                className="rounded-full border bg-white px-4 py-2 text-sm font-semibold text-gray-800 transition hover:bg-gray-50"
+              >
+                Station Display
+              </Link>
+
+              <Link
+                href="/control-room"
+                className="rounded-full bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-black"
+              >
+                Control Room
+              </Link>
+            </div>
           </div>
         </header>
 
@@ -97,7 +121,7 @@ export default function Home() {
 
 
         <footer className="pb-4 text-center text-xs text-gray-500">
-         RailETA • Dynamic ETA Forecasting • SIH 26028
+          RailETA • Dynamic ETA Forecasting • SIH 26028
         </footer>
 
       </div>

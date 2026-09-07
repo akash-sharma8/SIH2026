@@ -99,7 +99,44 @@ export interface ScheduledJourneyEndpoint {
   scheduled_departure?: string | null;
   scheduled_arrival?: string | null;
 }
+export type JourneyTimelineStatus =
+  | "PASSED"
+  | "CURRENT"
+  | "NEXT"
+  | "UPCOMING"
+  | "DESTINATION"
+  | "SCHEDULED"
+  | string;
 
+export interface JourneyTimelineStation {
+  station_code: string | null;
+  station_name: string | null;
+
+  status: JourneyTimelineStatus;
+
+  scheduled_arrival: string | null;
+  scheduled_departure: string | null;
+
+  actual_arrival: string | null;
+  actual_departure: string | null;
+
+  predicted_arrival: string | null;
+  predicted_departure: string | null;
+
+  delay_min: number | null;
+  platform: string | null;
+  distance_from_source_km: number | null;
+}
+
+export interface JourneyTimeline {
+  state:
+    | "RUNNING"
+    | "SCHEDULED_NOT_STARTED"
+    | "COMPLETED"
+    | string;
+
+  stations: JourneyTimelineStation[];
+}
 export type JourneyStateSource =
   | "SCHEDULED_NOT_STARTED"
   | "NORMALIZED_LIVE_JOURNEY_NO_UPCOMING_STATIONS"
@@ -116,6 +153,7 @@ export interface JourneyInfo {
   source?: ScheduledJourneyEndpoint | null;
   destination?: ScheduledJourneyEndpoint | null;
   schedule?: ScheduledJourneyStation[];
+  timeline?: JourneyTimeline | null;
 
   current_station_code: string | null;
   current_station_name: string | null;
@@ -154,6 +192,7 @@ export interface LiveForecastResponse {
   weather_corridor: StationWeather[];
   eta_weather_corridor: StationWeatherAtETA[];
   diagnostics: ModelDiagnostics | null;
+  alerts: TrainDisruptionAlert[];
 }
 
 export interface PredepartureForecastRequest {
@@ -441,4 +480,39 @@ export interface ModelDiagnostics {
 
   evaluation:
   ModelEvaluationMetrics | null;
+}
+
+export interface TrainSearchResult {
+  train_number: string;
+  train_name: string;
+
+  source_code: string | null;
+  source_name: string | null;
+
+  destination_code: string | null;
+  destination_name: string | null;
+
+  train_type: string | null;
+  popularity: number | null;
+}
+
+export interface TrainSearchResponse {
+  success: true;
+  results: TrainSearchResult[];
+}
+
+export interface DisruptionStation {
+    code: string | null;
+    name: string | null;
+}
+
+export interface TrainDisruptionAlert {
+    type: string;
+    severity: string;
+    title: string;
+    message: string;
+    from_station: DisruptionStation | null;
+    to_station: DisruptionStation | null;
+    affected_stations: DisruptionStation[];
+    source: string;
 }

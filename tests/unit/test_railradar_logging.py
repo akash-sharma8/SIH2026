@@ -39,8 +39,9 @@ def test_success_log_does_not_expose_secret(
         "data": {},
     }
 
-    with patch(
-        "app.clients.railradar.requests.get",
+    with patch.object(
+        client.session,
+        "get",
         return_value=response,
     ):
         with caplog.at_level(
@@ -81,8 +82,9 @@ def test_timeout_log_is_safe(
 ):
     client = build_client()
 
-    with patch(
-        "app.clients.railradar.requests.get",
+    with patch.object(
+        client.session,
+        "get",
         side_effect=requests.Timeout(),
     ):
         with caplog.at_level(
@@ -119,12 +121,12 @@ def test_network_failure_log_is_safe(
 ):
     client = build_client()
 
-    with patch(
-        "app.clients.railradar.requests.get",
-        side_effect=
-            requests.ConnectionError(
-                "connection failed"
-            ),
+    with patch.object(
+        client.session,
+        "get",
+        side_effect=requests.ConnectionError(
+            "connection failed",
+        ),
     ):
         with caplog.at_level(
             logging.WARNING,

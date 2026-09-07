@@ -79,7 +79,29 @@ def test_new_response_builder_matches_runtime():
             ],
     )
 
-    assert actual == expected
+    timeline = actual["journey"].get(
+        "timeline"
+    )
+
+    assert timeline is not None
+    assert timeline["state"] == "RUNNING"
+    assert timeline["stations"]
+
+    actual_legacy = {
+        **actual,
+        "journey": {
+            **actual["journey"],
+        },
+    }
+
+    actual_legacy[
+        "journey"
+    ].pop(
+        "timeline",
+        None,
+    )
+
+    assert actual_legacy == expected
 
 
 

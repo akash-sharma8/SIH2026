@@ -33,8 +33,9 @@ def test_live_request_contract():
         "data": {},
     }
 
-    with patch(
-        "app.clients.railradar.requests.get",
+    with patch.object(
+        client.session,
+        "get",
         return_value=response,
     ) as mocked_get:
         result = client.get_live_journey(
@@ -57,17 +58,32 @@ def test_live_request_contract():
             "authoritative": "false",
             "date": "2026-09-01",
         },
-        timeout=30,
+        timeout=(
+            3.05,
+            10,
+        ),
     )
 
 
 @pytest.mark.parametrize(
     ("status_code", "error_class"),
     [
-        (401, ProviderConfigurationError),
-        (404, JourneyNotFoundError),
-        (429, ProviderRateLimitError),
-        (503, ProviderUnavailableError),
+        (
+            401,
+            ProviderConfigurationError,
+        ),
+        (
+            404,
+            JourneyNotFoundError,
+        ),
+        (
+            429,
+            ProviderRateLimitError,
+        ),
+        (
+            503,
+            ProviderUnavailableError,
+        ),
     ],
 )
 def test_provider_http_error_mapping(
@@ -88,12 +104,17 @@ def test_provider_http_error_mapping(
         },
     }
 
-    with patch(
-        "app.clients.railradar.requests.get",
+    with patch.object(
+        client.session,
+        "get",
         return_value=response,
     ):
-        with pytest.raises(error_class):
-            client.get_live_journey("12615")
+        with pytest.raises(
+            error_class
+        ):
+            client.get_live_journey(
+                "12615"
+            )
 
 
 def test_timeout_mapping():
@@ -101,16 +122,19 @@ def test_timeout_mapping():
         make_settings()
     )
 
-    with patch(
-        "app.clients.railradar.requests.get",
+    with patch.object(
+        client.session,
+        "get",
         side_effect=requests.Timeout(
-            "timed out"
+            "timed out",
         ),
     ):
         with pytest.raises(
             ProviderTimeoutError
         ):
-            client.get_live_journey("12615")
+            client.get_live_journey(
+                "12615"
+            )
 
 
 def test_network_error_mapping():
@@ -118,16 +142,19 @@ def test_network_error_mapping():
         make_settings()
     )
 
-    with patch(
-        "app.clients.railradar.requests.get",
+    with patch.object(
+        client.session,
+        "get",
         side_effect=requests.ConnectionError(
-            "connection failed"
+            "connection failed",
         ),
     ):
         with pytest.raises(
             ProviderUnavailableError
         ):
-            client.get_live_journey("12615")
+            client.get_live_journey(
+                "12615"
+            )
 
 
 def test_non_json_response_mapping():
@@ -141,11 +168,14 @@ def test_non_json_response_mapping():
         "not json"
     )
 
-    with patch(
-        "app.clients.railradar.requests.get",
+    with patch.object(
+        client.session,
+        "get",
         return_value=response,
     ):
         with pytest.raises(
             ProviderUnavailableError
         ):
-            client.get_live_journey("12615")
+            client.get_live_journey(
+                "12615"
+            )

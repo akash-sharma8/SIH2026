@@ -9,6 +9,10 @@ from app.inference.artifacts import load_artifacts
 from app.api.predeparture import (
     router as predeparture_router,
 )
+
+from app.api.train_search import (
+    router as train_search_router,
+)
 from fastapi.middleware.cors import CORSMiddleware
 import time
 import uuid
@@ -214,3 +218,6 @@ app.include_router(
     predeparture_router
 )
 app.include_router(live_forecast_router)
+app.include_router(
+    train_search_router
+)

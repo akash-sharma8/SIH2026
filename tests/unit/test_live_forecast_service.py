@@ -515,3 +515,109 @@ def test_live_forecast_service_does_not_search_backwards_for_explicit_date():
     adapter.run_payload.assert_called_once_with(
         explicit_date_payload
     )
+
+def test_not_started_journey_remains_scheduled_even_with_current_location():
+    service = LiveForecastService()
+    artifacts = Mock()
+
+    provider_payload = {
+        "success": True,
+        "data": {
+            "trainNumber": "15030",
+            "trainName": "Gorakhpur Weekly Express",
+            "startDate": "2026-09-12",
+            "status": "not-started",
+            "currentLocation": {
+                "stationCode": "PUNE",
+                "stationName": "Pune Jn",
+                "sequence": 1,
+                "status": "at-station",
+                "delayMinutes": 0,
+            },
+            "delayMinutes": 0,
+            "exceptions": None,
+            "route": [
+                {
+                    "sequence": 1,
+                    "stationCode": "PUNE",
+                    "stationName": "Pune Jn",
+                    "status": "upcoming",
+                    "scheduledDeparture":
+                        "2026-09-12T11:20:00+05:30",
+                    "distance": 0,
+                },
+                {
+                    "sequence": 19,
+                    "stationCode": "ANG",
+                    "stationName": "Ahmadnagar.",
+                    "status": "upcoming",
+                    "scheduledArrival":
+                        "2026-09-12T13:32:00+05:30",
+                    "scheduledDeparture":
+                        "2026-09-12T13:35:00+05:30",
+                    "distance": 154.4,
+                },
+            ],
+        },
+    }
+
+    inference_response = {
+        "success": True,
+        "message":
+            "This journey is scheduled but has not started yet.",
+        "journey": {
+            "train_number": "15030",
+            "state_source":
+                "SCHEDULED_NOT_STARTED",
+            "upcoming_stations": 1,
+        },
+        "predictions": [],
+    }
+
+    with patch(
+        "app.services.forecast.RailRadarClient"
+    ) as client_class, patch(
+        "app.services.forecast.InferenceAdapter"
+    ) as adapter_class:
+        client = client_class.return_value
+
+        client.get_live_journey.return_value = (
+            provider_payload
+        )
+
+        adapter = adapter_class.return_value
+
+        adapter.run_payload.return_value = (
+            inference_response.copy()
+        )
+
+        result = service.get_live_forecast(
+            train_number="15030",
+            journey_date=None,
+            artifacts=artifacts,
+        )
+
+    assert result["success"] is True
+
+    assert (
+        result["journey"]["state_source"]
+        == "SCHEDULED_NOT_STARTED"
+    )
+
+    assert result["predictions"] == []
+
+    assert (
+        client.get_live_journey.call_count
+        == 1
+    )
+
+    assert (
+        client.get_live_journey.call_args.kwargs[
+            "journey_date"
+        ]
+        is None
+    )
+
+    adapter.run_payload.assert_called_once_with(
+        provider_payload
+    )

@@ -7,8 +7,8 @@ import type {
     ValidationErrorResponse,
     HealthResponse,
     ReadyResponse,
+    TrainSearchResponse,
 } from "./api-types";
-
 
 export type ApiFailure =
     | ApplicationErrorResponse
@@ -134,6 +134,25 @@ export class RailETAClient {
         );
     }
 
+     async searchTrains(
+        query: string,
+        limit: number = 10,
+    ): Promise<TrainSearchResponse> {
+        const params = new URLSearchParams({
+            q: query,
+            limit: String(limit),
+        });
+
+        return this.request<TrainSearchResponse>(
+            `/v1/trains/search?${params.toString()}`,
+            {
+                method: "GET",
+            },
+        );
+    }
+
+
+
 
     async getLiveForecast(
         payload: LiveForecastRequest,
@@ -164,13 +183,13 @@ export class RailETAClient {
 
 
     async health(): Promise<HealthResponse> {
-    return this.request<HealthResponse>(
-      "/health",
-      {
-        method: "GET",
-      },
-    );
-}
+        return this.request<HealthResponse>(
+            "/health",
+            {
+                method: "GET",
+            },
+        );
+    }
 
 
     async ready(): Promise<ReadyResponse> {

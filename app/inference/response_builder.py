@@ -4,6 +4,13 @@ from typing import Any, Callable
 import pandas as pd
 
 from app.inference.model2 import predict_model2_next_station
+from app.utils.datetime import (
+    timestamp_to_indian_iso,
+)
+
+from app.services.journey_timeline import (
+    build_journey_timeline,
+)
 
 
 INDIAN_TIMEZONE = "Asia/Kolkata"
@@ -19,21 +26,6 @@ def safe_json_number(value, digits=2):
         return None
 
     return round(numeric_value, digits)
-
-
-def timestamp_to_indian_iso(value):
-    timestamp = pd.to_datetime(
-        value,
-        utc=True,
-        errors="coerce",
-    )
-
-    if pd.isna(timestamp):
-        return None
-
-    return timestamp.tz_convert(
-        INDIAN_TIMEZONE
-    ).isoformat()
 
 
 def build_hybrid_eta_service_response_v1(
@@ -107,6 +99,12 @@ def build_hybrid_eta_service_response_v1(
     preflight_state = None
 
     if journey_status in {
+        "completed",
+        "complete",
+    }:
+        preflight_state = "COMPLETED"
+
+    elif journey_status in {
         "not-started",
         "not started",
         "scheduled",
@@ -115,7 +113,10 @@ def build_hybrid_eta_service_response_v1(
             "SCHEDULED_NOT_STARTED"
         )
 
-    if preflight_state == "SCHEDULED_NOT_STARTED":
+    if preflight_state in {
+        "COMPLETED",
+        "SCHEDULED_NOT_STARTED",
+    }:
         predictions_df = pd.DataFrame()
 
     elif upcoming_count == 0:
@@ -304,6 +305,11 @@ def build_hybrid_eta_service_response_v1(
                     }
                 )
 
+        timeline = build_journey_timeline(
+            normalized_journey_df=route_df,
+            predictions=[],
+        )
+
         return {
             "success": True,
 
@@ -449,10 +455,19 @@ def build_hybrid_eta_service_response_v1(
                 "observed_stations":
                     int(observed_mask.sum()),
 
-                "upcoming_stations":
-                    upcoming_count,
+                "upcoming_stations": (
+    0
+                    if preflight_state == "COMPLETED"
+                    else upcoming_count
+                ),
+
+                "timeline":
+                    timeline,
 
                 "state_source": (
+                    "COMPLETED"
+                    if preflight_state == "COMPLETED"
+                    else
                     "SCHEDULED_NOT_STARTED"
                     if preflight_state == "SCHEDULED_NOT_STARTED"
                     else
@@ -466,6 +481,9 @@ def build_hybrid_eta_service_response_v1(
             "predictions": [],
 
             "message": (
+                "This journey has been completed."
+                if preflight_state == "COMPLETED"
+                else
                 "This journey is scheduled but has not started yet."
                 if preflight_state == "SCHEDULED_NOT_STARTED"
                 else
@@ -755,6 +773,11 @@ def build_hybrid_eta_service_response_v1(
             station_response
         )
 
+    timeline = build_journey_timeline(
+        normalized_journey_df=route_df,
+        predictions=station_predictions,
+    )
+
     return {
         "success": True,
 
@@ -808,6 +831,7 @@ def build_hybrid_eta_service_response_v1(
 
             "upcoming_stations":
                 int(len(predictions_df)),
+            "timeline": timeline,
         },
 
         "predictions":

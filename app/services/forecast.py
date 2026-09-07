@@ -30,6 +30,9 @@ from app.inference.normalizer import (
 from app.schemas.requests import (
     PredepartureForecastRequest,
 )
+from app.services.disruption_alerts import (
+    build_disruption_alerts,
+)
 
 from app.services.cache import TTLCache
 from app.services.route_map_builder import build_route_map
@@ -395,10 +398,16 @@ class LiveForecastService:
                 ),
             )
 
+
             response["route"] = (
                 route.model_dump()
             )
 
+            response["alerts"] = (
+                build_disruption_alerts(
+                    api_result
+                )
+            )
             weather_corridor = []
 
             weather_api_key = getattr(

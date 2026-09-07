@@ -10,6 +10,10 @@ from app.schemas.model_diagnostics import (
     ModelDiagnostics,
 )
 
+from app.schemas.disruption import (
+    TrainDisruptionAlert,
+)
+
 class ErrorDetail(BaseModel):
     code: str
     message: str
@@ -95,11 +99,49 @@ class StationPrediction(BaseModel):
     explanation: str
     comparison_only: ProviderComparison
 
+class JourneyTimelineStation(BaseModel):
+    station_code: str | None = None
+    station_name: str | None = None
+
+    status: str
+
+    scheduled_arrival: str | None = None
+    scheduled_departure: str | None = None
+
+    actual_arrival: str | None = None
+    actual_departure: str | None = None
+
+    predicted_arrival: str | None = None
+    predicted_departure: str | None = None
+
+    delay_min: float | None = None
+    platform: str | None = None
+    distance_from_source_km: float | None = None
+
+
+class JourneyEndpoint(BaseModel):
+    station_code: str | None = None
+    station_name: str | None = None
+    scheduled_arrival: str | None = None
+    scheduled_departure: str | None = None
+
+
+class JourneyTimeline(BaseModel):
+    state: str
+    stations: list[JourneyTimelineStation] = Field(
+        default_factory=list
+    )
+
 
 class JourneyInfo(BaseModel):
     journey_id: str
     train_number: str
     train_name: str | None
+
+    journey_start_date: str | None = None
+
+    source: JourneyEndpoint | None = None
+    destination: JourneyEndpoint | None = None
 
     current_station_code: str | None
     current_station_name: str | None
@@ -110,6 +152,7 @@ class JourneyInfo(BaseModel):
     upcoming_stations: int
     state_source: str
 
+    timeline: JourneyTimeline | None = None
 
 class SystemArchitecture(BaseModel):
     next_station: str
@@ -136,15 +179,20 @@ class LiveForecastResponse(BaseModel):
     predictions: list[StationPrediction]
     backend: BackendMetadata | None = None
     route: RouteMap | None = None
-    weather_corridor: list[StationWeather] = Field(
-        default_factory=list
-    )
 
     eta_weather_corridor: list[StationWeatherAtETA] = Field(
         default_factory=list
     )
     diagnostics: ModelDiagnostics | None = None
-    
+    alerts: list[
+        TrainDisruptionAlert
+    ] = Field(
+        default_factory=list
+    )
+    weather_corridor: list[StationWeather] = Field(
+        default_factory=list
+    )
+
 
 class HealthResponse(BaseModel):
     status: str
