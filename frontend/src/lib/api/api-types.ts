@@ -196,67 +196,8 @@ export interface LiveForecastResponse {
 }
 
 export interface PredepartureForecastRequest {
-  train: {
-    train_number: string;
-    train_type: string;
-  };
-
-  schedule: {
-    year: number;
-    month: number;
-    day_of_week: number;
-    departure_hour: number;
-
-    is_weekend: 0 | 1;
-    is_night_departure: 0 | 1;
-    is_peak_hour: 0 | 1;
-    is_festival_season: 0 | 1;
-
-    season: string;
-  };
-
-  route: {
-    zone: string;
-    zone_abbr: string;
-
-    source_station_category: string;
-    destination_station_category: string;
-
-    distance_km: number;
-    num_scheduled_stops: number;
-    scheduled_travel_hours: number;
-    route_historical_ontime_pct: number;
-  };
-
-  infrastructure: {
-    track_doubled: 0 | 1;
-    is_hdn_route: 0 | 1;
-    traction_type: string;
-    is_electrified: 0 | 1;
-    psr_count: number;
-    is_circular_route: 0 | 1;
-  };
-
-  weather_risk: {
-    is_monsoon_season: 0 | 1;
-    is_fog_risk: 0 | 1;
-    fog_risk_score: number;
-    zone_fog_index: number;
-    zone_congestion_index: number;
-    season_severity_score: number;
-  };
-
-  operations: {
-    loco_age_years: number;
-    coach_age_years: number;
-    has_lhb_coaches: 0 | 1;
-    is_rake_shared: 0 | 1;
-    maintenance_score: number;
-    seat_utilisation_pct: number;
-    is_overloaded: 0 | 1;
-    late_incoming_rake: 0 | 1;
-    is_special_train: 0 | 1;
-  };
+  train_number: string;
+  journey_date: string;
 }
 
 export interface PredepartureModelInfo {
@@ -282,6 +223,28 @@ export interface PredepartureForecast {
   | string;
 }
 
+export interface PredepartureJourneyInfo {
+  train_number: string;
+  train_name: string | null;
+  train_type: string | null;
+  train_category: string | null;
+  journey_status: string;
+  year: number;
+  month: number;
+  day_of_week: number;
+  departure_hour: number;
+
+  is_weekend: number;
+  is_night_departure: number;
+  is_peak_hour: number;
+
+  season: string;
+
+  distance_km: number;
+  num_scheduled_stops: number;
+  scheduled_travel_hours: number;
+}
+
 export interface PredepartureInputQuality {
   feature_completeness_pct: number;
   missing_features: string[];
@@ -293,6 +256,7 @@ export interface PredepartureForecastResponse {
   success: true;
   model: PredepartureModelInfo;
   forecast: PredepartureForecast;
+  journey: PredepartureJourneyInfo;
   input_quality: PredepartureInputQuality;
   limitations: string[];
   diagnostics: ModelDiagnostics | null;

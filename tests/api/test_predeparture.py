@@ -1,83 +1,100 @@
+from unittest.mock import patch
+
 from fastapi.testclient import TestClient
 
+from app.core.errors import (
+    JourneyNotFoundError,
+)
 from app.main import app
-
 
 def build_valid_payload():
     return {
-        "train": {
-            "train_number": "12615",
-            "train_type": "Express",
-        },
-
-        "schedule": {
-            "year": 2024,
-            "month": 8,
-            "day_of_week": 2,
-            "departure_hour": 10,
-
-            "is_weekend": 0,
-            "is_night_departure": 0,
-            "is_peak_hour": 0,
-            "is_festival_season": 0,
-
-            "season": "Monsoon",
-        },
-
-        "route": {
-            "zone": "SR",
-            "zone_abbr": "SR",
-
-            "source_station_category": "A1",
-            "destination_station_category": "A1",
-
-            "distance_km": 500.0,
-            "num_scheduled_stops": 10,
-            "scheduled_travel_hours": 8.0,
-
-            "route_historical_ontime_pct": 75.0,
-        },
-
-        "infrastructure": {
-            "track_doubled": 1,
-            "is_hdn_route": 0,
-
-            "traction_type": "Electric (25kV AC)",
-
-            "is_electrified": 1,
-            "psr_count": 1,
-
-            "is_circular_route": 0,
-        },
-
-        "weather_risk": {
-            "is_monsoon_season": 1,
-            "is_fog_risk": 0,
-
-            "fog_risk_score": 0.1,
-            "zone_fog_index": 0.2,
-            "zone_congestion_index": 0.3,
-            "season_severity_score": 0.4,
-        },
-
-        "operations": {
-            "loco_age_years": 5.0,
-            "coach_age_years": 4.0,
-
-            "has_lhb_coaches": 1,
-            "is_rake_shared": 0,
-
-            "maintenance_score": 85.0,
-            "seat_utilisation_pct": 80.0,
-
-            "is_overloaded": 0,
-            "late_incoming_rake": 0,
-            "is_special_train": 0,
-        },
+        "train_number": "12722",
+        "journey_date": "2026-09-11",
     }
 
 
-def test_predeparture_endpoint_contract():
+def build_feature_result():
+    derived = {
+        "train_number": "12722",
+        "train_name": "Dakshin SF Express",
+        "train_type": "Superfast Express",
+        "train_category": "Express",
+        "journey_status": "not-started",
+        "year": 2026,
+        "month": 9,
+        "day_of_week": 4,
+        "departure_hour": 22,
+        "is_weekend": 0,
+        "is_night_departure": 1,
+        "is_peak_hour": 0,
+        "season": "Monsoon",
+        "distance_km": 1667.4,
+        "num_scheduled_stops": 45,
+        "scheduled_travel_hours": 29.0,
+    }
+
+    model_features = {
+        "train_number":
+            derived["train_number"],
+
+        "train_type":
+            derived["train_type"],
+
+        "year":
+            derived["year"],
+
+        "month":
+            derived["month"],
+
+        "day_of_week":
+            derived["day_of_week"],
+
+        "departure_hour":
+            derived["departure_hour"],
+
+        "is_weekend":
+            derived["is_weekend"],
+
+        "is_night_departure":
+            derived["is_night_departure"],
+
+        "is_peak_hour":
+            derived["is_peak_hour"],
+
+        "season":
+            derived["season"],
+
+        "distance_km":
+            derived["distance_km"],
+
+        "num_scheduled_stops":
+            derived["num_scheduled_stops"],
+
+        "scheduled_travel_hours":
+            derived["scheduled_travel_hours"],
+    }
+
+    return {
+        "provider_payload": {
+            "success": True,
+        },
+        "derived": derived,
+        "model_features": model_features,
+    }
+
+
+@patch(
+    "app.services.forecast."
+    "build_predeparture_features"
+)
+def test_predeparture_endpoint_contract(
+    mock_feature_builder,
+):
+    mock_feature_builder.return_value = (
+        build_feature_result()
+    )
+
     with TestClient(app) as client:
         response = client.post(
             "/v1/forecast/predeparture",
@@ -117,35 +134,76 @@ def test_predeparture_endpoint_contract():
         }
     )
 
-    assert body["forecast"]["confidence"] in {
-        "LOW",
-        "MEDIUM",
+    # Reduced feature coverage is expected for the
+    # production-style pre-departure request.
+    assert (
+        body["forecast"]["confidence"]
+        == "LOW"
+    )
+
+    journey = body["journey"]
+
+    assert (
+        journey["train_number"]
+        == "12722"
+    )
+
+    assert (
+        journey["train_name"]
+        == "Dakshin SF Express"
+    )
+
+    assert (
+        journey["train_type"]
+        == "Superfast Express"
+    )
+
+    assert (
+        journey["distance_km"]
+        == 1667.4
+    )
+
+    assert (
+        journey["num_scheduled_stops"]
+        == 45
+    )
+
+    assert (
+        journey["scheduled_travel_hours"]
+        == 29.0
+    )
+
+    input_quality = (
+        body["input_quality"]
+    )
+
+    assert (
+        input_quality[
+            "feature_completeness_pct"
+        ]
+        < 100.0
+    )
+
+    assert set(
+        input_quality[
+            "missing_critical_features"
+        ]
+    ) == {
+        "late_incoming_rake",
+        "season_severity_score",
+        "route_historical_ontime_pct",
     }
 
     assert (
-        body["input_quality"][
-            "feature_completeness_pct"
+        input_quality[
+            "unknown_categories"
         ]
-        == 100.0
+        == {}
     )
-
-    assert (
-        body["input_quality"][
-            "missing_critical_features"
-        ]
-        == []
-    )
-    assert "diagnostics" in body
-    assert body["diagnostics"] is not None
 
     diagnostics = body["diagnostics"]
 
-    assert (
-        "prediction_explanation"
-        in diagnostics
-    )
-
-    assert "evaluation" in diagnostics
+    assert diagnostics is not None
 
     explanation = (
         diagnostics[
@@ -153,24 +211,23 @@ def test_predeparture_endpoint_contract():
         ]
     )
 
-    assert isinstance(
-        explanation,
-        dict,
+    # Do not expose misleading SHAP factors when
+    # important inputs are unavailable.
+    assert (
+        explanation[
+            "explanation_available"
+        ]
+        is False
     )
 
     assert (
-        explanation["method"]
-        in {
-            "SHAP",
-            "UNAVAILABLE",
-        }
+        explanation["factors"]
+        == []
     )
 
-    assert isinstance(
-        explanation[
-            "explanation_available"
-        ],
-        bool,
+    assert (
+        explanation["source"]
+        == "INSUFFICIENT_INPUT_COVERAGE"
     )
 
     evaluation = (
@@ -198,12 +255,13 @@ def test_predeparture_endpoint_contract():
             > 0
         )
 
+    mock_feature_builder.assert_called_once()
 
 
-def test_predeparture_missing_critical_feature_returns_422():
-    payload = build_valid_payload()
-
-    del payload["train"]["train_number"]
+def test_predeparture_missing_train_number_returns_422():
+    payload = {
+        "journey_date": "2026-09-11",
+    }
 
     with TestClient(app) as client:
         response = client.post(
@@ -213,15 +271,12 @@ def test_predeparture_missing_critical_feature_returns_422():
 
     assert response.status_code == 422
 
-    body = response.json()
 
-    assert "detail" in body
-
-
-def test_predeparture_unknown_category_returns_low_confidence():
-    payload = build_valid_payload()
-
-    payload["train"]["train_type"] = "UNKNOWN_TRAIN_TYPE"
+def test_predeparture_invalid_train_number_returns_422():
+    payload = {
+        "train_number": "ABC123",
+        "journey_date": "2026-09-11",
+    }
 
     with TestClient(app) as client:
         response = client.post(
@@ -229,25 +284,22 @@ def test_predeparture_unknown_category_returns_low_confidence():
             json=payload,
         )
 
-    assert response.status_code == 200
+    assert response.status_code == 422
 
-    body = response.json()
 
-    assert body["success"] is True
+def test_predeparture_invalid_date_returns_422():
+    payload = {
+        "train_number": "12722",
+        "journey_date": "not-a-date",
+    }
 
-    assert (
-        body["forecast"]["confidence"]
-        == "LOW"
-    )
+    with TestClient(app) as client:
+        response = client.post(
+            "/v1/forecast/predeparture",
+            json=payload,
+        )
 
-    assert (
-        body["input_quality"][
-            "unknown_categories"
-        ]["train_type"]
-        == "UNKNOWN_TRAIN_TYPE"
-    )
-
-from unittest.mock import patch
+    assert response.status_code == 422
 
 
 def test_predeparture_rate_limited():
@@ -278,4 +330,97 @@ def test_predeparture_rate_limited():
     assert (
         body["error"]["retryable"]
         is True
+    )
+
+
+@patch(
+    "app.services.forecast."
+    "build_predeparture_features"
+)
+def test_predeparture_running_train_is_rejected(
+    mock_feature_builder,
+):
+    feature_result = build_feature_result()
+
+    feature_result["derived"][
+        "journey_status"
+    ] = "running"
+
+    mock_feature_builder.return_value = (
+        feature_result
+    )
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/v1/forecast/predeparture",
+            json=build_valid_payload(),
+        )
+
+    assert response.status_code == 422
+
+    body = response.json()
+
+    assert body["success"] is False
+
+    assert (
+        body["error"]["code"]
+        == "INVALID_JOURNEY_STATE"
+    )
+
+    assert (
+        "currently running"
+        in body["error"]["message"].lower()
+    )
+
+    assert (
+        "running train section"
+        in body["error"]["message"].lower()
+    )
+
+@patch(
+    "app.services.forecast."
+    "build_predeparture_features"
+)
+def test_predeparture_journey_not_found_preserves_404(
+    mock_feature_builder,
+):
+    mock_feature_builder.side_effect = (
+        JourneyNotFoundError(
+            "Requested train journey "
+            "was not available.",
+            details={
+                "http_status": 404,
+                "provider_code":
+                    "TRAIN_NOT_FOUND",
+            },
+        )
+    )
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/v1/forecast/predeparture",
+            json=build_valid_payload(),
+        )
+
+    assert response.status_code == 404
+
+    body = response.json()
+
+    assert body["success"] is False
+
+    assert (
+        body["error"]["code"]
+        == "JOURNEY_NOT_FOUND"
+    )
+
+    assert (
+        body["error"]["retryable"]
+        is False
+    )
+
+    assert (
+        body["error"]["details"][
+            "provider_code"
+        ]
+        == "TRAIN_NOT_FOUND"
     )

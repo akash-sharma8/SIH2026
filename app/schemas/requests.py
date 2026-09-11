@@ -1,8 +1,11 @@
+from datetime import date
 from typing import Optional
 
-from pydantic import BaseModel, Field
-
-
+from pydantic import (
+    BaseModel,
+    Field,
+    field_validator,
+)
 class TrainInfo(BaseModel):
     train_number: str
     train_type: str
@@ -112,6 +115,39 @@ class PredepartureForecastRequest(BaseModel):
 
         return features
 
+
+class SimplePredepartureForecastRequest(BaseModel):
+    train_number: str = Field(
+        ...,
+        min_length=1,
+        max_length=10,
+        examples=["12722"],
+    )
+
+    journey_date: date = Field(
+        ...,
+        examples=["2026-09-11"],
+    )
+
+    @field_validator("train_number")
+    @classmethod
+    def validate_train_number(
+        cls,
+        value: str,
+    ) -> str:
+        value = value.strip()
+
+        if not value:
+            raise ValueError(
+                "Train number is required."
+            )
+
+        if not value.isdigit():
+            raise ValueError(
+                "Train number must contain digits only."
+            )
+
+        return value
 
 
 

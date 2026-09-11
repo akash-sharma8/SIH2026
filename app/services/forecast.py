@@ -2,7 +2,10 @@ import logging
 from datetime import date, timedelta
 from app.clients.railradar import RailRadarClient
 from app.core.config import get_settings
-from app.core.errors import PredictionError
+from app.core.errors import (
+    PredictionError,
+    RailETAError,
+)
 from app.inference.adapter import InferenceAdapter
 from app.inference.model1 import (
     predict_model1_predeparture,
@@ -29,7 +32,13 @@ from app.inference.normalizer import (
 )
 from app.schemas.requests import (
     PredepartureForecastRequest,
+    SimplePredepartureForecastRequest,
 )
+
+from app.services.predeparture_features import (
+    build_predeparture_features,
+)
+
 from app.services.disruption_alerts import (
     build_disruption_alerts,
 )
@@ -265,7 +274,204 @@ class PredepartureService:
                 },
             ) from exc
 
+    def get_simple_predeparture_forecast(
+        self,
+        request_data: SimplePredepartureForecastRequest,
+        artifacts,
+    ) -> dict:
+        try:
+            feature_result = (
+                build_predeparture_features(
+                    train_number=
+                        request_data.train_number,
+                    journey_date=
+                        request_data.journey_date,
+                )
+            )
 
+            journey_status = str(
+                feature_result.get(
+                    "derived",
+                    {},
+                ).get(
+                    "journey_status",
+                    "",
+                )
+            ).strip().lower()
+
+
+            if journey_status in {
+                "running",
+                "en-route",
+                "en route",
+            }:
+                raise ValueError(
+                    "This train is currently running. "
+                    "Before Departure is only available "
+                    "before the journey starts. Please use "
+                    "the Running Train section."
+                )
+
+
+            if journey_status in {
+                "completed",
+                "arrived",
+            }:
+                raise ValueError(
+                    "This train journey has already completed. "
+                    "Before Departure is only available before "
+                    "the train starts."
+                )
+
+
+            if journey_status in {
+                "cancelled",
+                "canceled",
+            }:
+                raise ValueError(
+                    "This train journey is cancelled, so a "
+                    "pre-departure delay forecast is not available."
+                )
+
+
+            if journey_status not in {
+                "not-started",
+                "not started",
+                "scheduled",
+            }:
+                raise ValueError(
+                    "The journey state could not be confirmed "
+                    "as pre-departure. Please try another train "
+                    "or journey date."
+                )
+
+            features = feature_result[
+                "model_features"
+            ]
+
+            response = (
+                predict_model1_predeparture(
+                    features,
+                    model=artifacts.model1,
+                    metadata=
+                        artifacts.model1_metadata,
+                    strict=False,
+                )
+            )
+
+            if not isinstance(
+                response,
+                dict,
+            ):
+                raise PredictionError(
+                    "Model 1 returned an "
+                    "invalid response."
+                )
+
+            if response.get(
+                "success"
+            ) is not True:
+                raise PredictionError(
+                    "Model 1 could not generate "
+                    "the pre-departure forecast."
+                )
+
+            missing_critical_features = (
+                response.get(
+                    "input_quality",
+                    {},
+                ).get(
+                    "missing_critical_features",
+                    [],
+                )
+            )
+
+            if missing_critical_features:
+                prediction_explanation = {
+                    "method": "UNAVAILABLE",
+                    "factors": [],
+                    "explanation_available": False,
+                    "source":
+                        "INSUFFICIENT_INPUT_COVERAGE",
+                    "interpretation": (
+                        "Feature-level explanation is hidden "
+                        "because important operational inputs "
+                        "are unavailable before departure."
+                    ),
+                }
+
+            else:
+                try:
+                    prediction_explanation = (
+                        build_model1_explanation(
+                            features,
+                            model=artifacts.model1,
+                            metadata=
+                                artifacts.model1_metadata,
+                            top_k=5,
+                        )
+                    )
+
+                except Exception:
+                    prediction_explanation = {
+                        "method": "UNAVAILABLE",
+                        "factors": [],
+                        "explanation_available":
+                            False,
+                        "source":
+                            "MODEL_1_EXPLANATION_FAILED",
+                    }
+
+            try:
+                evaluation = (
+                    get_model1_evaluation()
+                )
+
+            except Exception:
+                evaluation = None
+
+            response["diagnostics"] = {
+                "prediction_explanation":
+                    prediction_explanation,
+                "evaluation":
+                    evaluation,
+            }
+
+            response["journey"] = (
+                feature_result["derived"]
+            )
+
+            response["limitations"] = [
+                *response.get(
+                    "limitations",
+                    [],
+                ),
+                (
+                    "Some operational features are "
+                    "not available from the live "
+                    "provider before departure, so "
+                    "this forecast is served with "
+                    "reduced confidence."
+                ),
+            ]
+
+            return response
+
+        except ValueError:
+            raise
+
+        except RailETAError:
+            raise
+
+        except Exception as exc:
+            raise PredictionError(
+                "Failed to generate the "
+                "pre-departure forecast.",
+                details={
+                    "exception_type":
+                        type(exc).__name__,
+                },
+            ) from exc
 
 class LiveForecastService:
     def get_live_forecast(

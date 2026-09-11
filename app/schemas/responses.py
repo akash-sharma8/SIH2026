@@ -48,13 +48,36 @@ class PredepartureInputQuality(BaseModel):
     missing_critical_features: list[str]
     unknown_categories: dict[str, Any]
 
+class PredepartureJourneyInfo(BaseModel):
+    train_number: str
+    train_name: str | None = None
+    train_type: str | None = None
+    train_category: str | None = None
+    journey_status: str
+    year: int
+    month: int
+    day_of_week: int
+    departure_hour: int
+
+    is_weekend: int
+    is_night_departure: int
+    is_peak_hour: int
+
+    season: str
+
+    distance_km: float
+    num_scheduled_stops: int
+    scheduled_travel_hours: float
+
 class PredepartureForecastResponse(BaseModel):
     success: bool
     model: PredepartureModelInfo
     forecast: PredepartureForecast
+    journey: PredepartureJourneyInfo
     input_quality: PredepartureInputQuality
     limitations: list[str]
     diagnostics: ModelDiagnostics | None = None
+
 
 class StationInfo(BaseModel):
     code: str

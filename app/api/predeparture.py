@@ -11,8 +11,10 @@ from app.core.rate_limit import (
     SlidingWindowRateLimiter,
 )
 from app.core.errors import InvalidJourneyStateError
+
 from app.schemas.requests import (
     PredepartureForecastRequest,
+    SimplePredepartureForecastRequest,
 )
 from app.services.forecast import (
     PredepartureService,
@@ -69,7 +71,7 @@ predeparture_service = (
     },
 )
 def get_predeparture_forecast(
-    payload: PredepartureForecastRequest,
+    payload: SimplePredepartureForecastRequest,
     request: Request,
 ):
 
@@ -105,7 +107,7 @@ def get_predeparture_forecast(
     try:
         return (
             predeparture_service
-            .get_predeparture_forecast(
+            .get_simple_predeparture_forecast(
                 request_data=payload,
                 artifacts=artifacts,
             )
