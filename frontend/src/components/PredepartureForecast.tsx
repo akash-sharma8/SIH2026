@@ -61,6 +61,7 @@ export default function PredepartureForecast() {
         PredepartureForecastResponse | null
     >(null);
 
+
     const [
         loading,
         setLoading,
@@ -71,6 +72,7 @@ export default function PredepartureForecast() {
         setError,
     ] = useState<string | null>(null);
 
+    const [errorCode, setErrorCode] = useState<string | null>(null);
     const [
         requestId,
         setRequestId,
@@ -119,6 +121,7 @@ export default function PredepartureForecast() {
         try {
             setLoading(true);
             setError(null);
+            setErrorCode(null);
             setRequestId(null);
             setResult(null);
 
@@ -134,12 +137,27 @@ export default function PredepartureForecast() {
             if (
                 err instanceof RailETAApiError
             ) {
+                const failure =
+                    err.body as {
+                        error?: {
+                            code?: string;
+                        };
+                    };
+
+                setErrorCode(
+                    failure?.error?.code ?? null,
+                );
+
                 setError(err.message);
+
                 setRequestId(
                     err.requestId,
                 );
+
                 return;
             }
+
+            setErrorCode(null);
 
             setError(
                 err instanceof Error
@@ -366,7 +384,35 @@ export default function PredepartureForecast() {
 
             {error && (
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
-                    {error
+                    {errorCode === "JOURNEY_NOT_FOUND" ? (
+                        <>
+                            <p className="text-lg font-bold text-gray-900">
+                                Train or journey not found
+                            </p>
+
+                            <p className="mt-2 text-sm leading-6 text-gray-700">
+                                We couldn&apos;t find train{" "}
+                                <span className="font-semibold">
+                                    {payload.train_number}
+                                </span>{" "}
+                                for the selected journey date.
+                            </p>
+
+                            <p className="mt-3 text-sm font-medium text-gray-700">
+                                Please check:
+                            </p>
+
+                            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-gray-700">
+                                <li>
+                                    The train number is correct
+                                </li>
+
+                                <li>
+                                    The selected date is the train&apos;s journey start date
+                                </li>
+                            </ul>
+                        </>
+                    ) : error
                         .toLowerCase()
                         .includes("currently running") ? (
                         <>
