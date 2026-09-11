@@ -630,13 +630,33 @@ export default function LiveTrainSearch() {
 
             {error && (
                 <div className="rounded-2xl border border-red-200 bg-red-50 p-5 shadow-sm">
-                    <p className="font-semibold text-red-900">
-                        Unable to generate forecast
-                    </p>
+                    {error
+                        .toLowerCase()
+                        .includes("rate limit") ||
+                        error
+                            .toLowerCase()
+                            .includes("quota") ? (
+                        <>
+                            <p className="text-lg font-semibold text-red-900">
+                                Live train data is temporarily unavailable
+                            </p>
 
-                    <p className="mt-1 text-sm text-red-800">
-                        {error}
-                    </p>
+                            <p className="mt-2 text-sm leading-6 text-red-800">
+                                We&apos;re receiving too many live-data requests right now.
+                                Please wait a moment and try again.
+                            </p>
+                        </>
+                    ) : (
+                        <>
+                            <p className="font-semibold text-red-900">
+                                Unable to generate forecast
+                            </p>
+
+                            <p className="mt-1 text-sm text-red-800">
+                                {error}
+                            </p>
+                        </>
+                    )}
 
                     {requestId && (
                         <p className="mt-2 text-xs text-gray-500">
@@ -1687,181 +1707,181 @@ export default function LiveTrainSearch() {
 
 
 
-                    <div className="grid gap-4 xl:grid-cols-2">
+                        <div className="grid gap-4 xl:grid-cols-2">
 
-                        {/* Explainability */}
-                        <div className="rounded-2xl border bg-white p-5 shadow-sm">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                Prediction Explainability
-                            </p>
+                            {/* Explainability */}
+                            <div className="rounded-2xl border bg-white p-5 shadow-sm">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                    Prediction Explainability
+                                </p>
 
-                            {result.diagnostics
-                                ?.prediction_explanation
-                                ?.explanation_available ? (
-                                <div className="mt-4 space-y-3">
+                                {result.diagnostics
+                                    ?.prediction_explanation
+                                    ?.explanation_available ? (
+                                    <div className="mt-4 space-y-3">
 
-                                    <p className="text-sm text-gray-600">
-                                        Method:{" "}
-                                        <span className="font-semibold text-gray-900">
-                                            {
-                                                result.diagnostics
-                                                    .prediction_explanation
-                                                    .method
-                                            }
-                                        </span>
-                                    </p>
+                                        <p className="text-sm text-gray-600">
+                                            Method:{" "}
+                                            <span className="font-semibold text-gray-900">
+                                                {
+                                                    result.diagnostics
+                                                        .prediction_explanation
+                                                        .method
+                                                }
+                                            </span>
+                                        </p>
 
-                                    {result.diagnostics
-                                        .prediction_explanation
-                                        .factors
-                                        .slice(0, 5)
-                                        .map((factor) => (
-                                            <div
-                                                key={`${factor.feature}-${factor.rank ?? 0}`}
-                                                className="rounded-xl border p-3"
-                                            >
-                                                <div className="flex items-start justify-between gap-3">
-                                                    <div>
-                                                        <p className="font-semibold">
-                                                            {factor.display_name ?? factor.feature}
-                                                        </p>
+                                        {result.diagnostics
+                                            .prediction_explanation
+                                            .factors
+                                            .slice(0, 5)
+                                            .map((factor) => (
+                                                <div
+                                                    key={`${factor.feature}-${factor.rank ?? 0}`}
+                                                    className="rounded-xl border p-3"
+                                                >
+                                                    <div className="flex items-start justify-between gap-3">
+                                                        <div>
+                                                            <p className="font-semibold">
+                                                                {factor.display_name ?? factor.feature}
+                                                            </p>
 
-                                                        <p className="text-xs text-gray-500">
-                                                            {factor.feature}
-                                                        </p>
+                                                            <p className="text-xs text-gray-500">
+                                                                {factor.feature}
+                                                            </p>
+                                                        </div>
+
+                                                        <span className="rounded-full border px-2 py-1 text-xs font-semibold">
+                                                            {factor.direction === "INCREASES_DELAY"
+                                                                ? "Pushes ETA later"
+                                                                : factor.direction === "REDUCES_DELAY"
+                                                                    ? "Pulls ETA earlier"
+                                                                    : factor.direction}
+                                                        </span>
                                                     </div>
 
-                                                    <span className="rounded-full border px-2 py-1 text-xs font-semibold">
-                                                        {factor.direction === "INCREASES_DELAY"
-                                                            ? "Pushes ETA later"
-                                                            : factor.direction === "REDUCES_DELAY"
-                                                                ? "Pulls ETA earlier"
-                                                                : factor.direction}
-                                                    </span>
+                                                    {factor.contribution != null && (
+                                                        <p className="mt-2 text-sm text-gray-600">
+                                                            Contribution:{" "}
+                                                            <span className="font-semibold text-gray-900">
+                                                                {factor.contribution.toFixed(2)} min
+                                                            </span>
+                                                        </p>
+                                                    )}
                                                 </div>
+                                            ))}
 
-                                                {factor.contribution != null && (
-                                                    <p className="mt-2 text-sm text-gray-600">
-                                                        Contribution:{" "}
-                                                        <span className="font-semibold text-gray-900">
-                                                            {factor.contribution.toFixed(2)} min
-                                                        </span>
-                                                    </p>
-                                                )}
-                                            </div>
-                                        ))}
+                                        {result.diagnostics.prediction_explanation.interpretation && (
+                                            <p className="rounded-lg bg-gray-50 p-3 text-xs leading-5 text-gray-600">
+                                                {result.diagnostics.prediction_explanation.interpretation}
+                                            </p>
+                                        )}
 
-                                    {result.diagnostics.prediction_explanation.interpretation && (
-                                        <p className="rounded-lg bg-gray-50 p-3 text-xs leading-5 text-gray-600">
-                                            {result.diagnostics.prediction_explanation.interpretation}
+
+                                    </div>
+                                ) : (
+                                    <div className="mt-4 rounded-xl border border-dashed bg-gray-50 p-4">
+                                        <p className="font-semibold">
+                                            Explainability not available yet
                                         </p>
-                                    )}
+
+                                        <p className="mt-1 text-sm text-gray-600">
+                                            Explanation is unavailable for this
+                                            prediction because attribution could
+                                            not be safely reconstructed for the
+                                            served model output.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
 
 
-                                </div>
-                            ) : (
-                                <div className="mt-4 rounded-xl border border-dashed bg-gray-50 p-4">
-                                    <p className="font-semibold">
-                                        Explainability not available yet
-                                    </p>
+                            {/* Evaluation */}
+                            <div className="rounded-2xl border bg-white p-5 shadow-sm">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                    Model Evaluation
+                                </p>
+                                <p className="mt-2 text-xs leading-5 text-gray-500">
+                                    These values are evaluation errors in minutes, not an accuracy percentage.
+                                    Lower values indicate better performance.
+                                </p>
 
-                                    <p className="mt-1 text-sm text-gray-600">
-                                        Explanation is unavailable for this
-                                        prediction because attribution could
-                                        not be safely reconstructed for the
-                                        served model output.
-                                    </p>
-                                </div>
-                            )}
+                                {result.diagnostics?.evaluation ? (
+                                    <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                        <div className="rounded-xl bg-gray-50 p-3">
+                                            <p className="text-xs text-gray-500">
+                                                MAE
+                                            </p>
+
+                                            <p className="mt-1 text-xl font-bold">
+                                                {result.diagnostics.evaluation.mae_minutes != null
+                                                    ? `${result.diagnostics.evaluation.mae_minutes.toFixed(2)} min`
+                                                    : "N/A"}
+                                            </p>
+                                            Average absolute prediction error.
+                                        </div>
+
+                                        <div className="rounded-xl bg-gray-50 p-3">
+                                            <p className="text-xs text-gray-500">
+                                                RMSE
+                                            </p>
+
+                                            <p className="mt-1 text-xl font-bold">
+                                                {result.diagnostics.evaluation.rmse_minutes != null
+                                                    ? `${result.diagnostics.evaluation.rmse_minutes.toFixed(2)} min`
+                                                    : "N/A"}
+                                            </p>
+                                            <p className="mt-1 text-xs text-gray-500">
+                                                Gives more weight to larger prediction errors.
+                                            </p>
+                                        </div>
+
+                                        <div className="rounded-xl bg-gray-50 p-3">
+                                            <p className="text-xs text-gray-500">
+                                                Median Error
+                                            </p>
+
+                                            <p className="mt-1 font-bold">
+                                                {result.diagnostics.evaluation.median_absolute_error_minutes != null
+                                                    ? `${result.diagnostics.evaluation.median_absolute_error_minutes.toFixed(2)} min`
+                                                    : "N/A"}
+                                            </p>
+                                            <p className="mt-1 text-xs text-gray-500">
+                                                Typical absolute prediction error.
+                                            </p>
+                                        </div>
+
+                                        <div className="rounded-xl bg-gray-50 p-3">
+                                            <p className="text-xs text-gray-500">
+                                                P90 Error
+                                            </p>
+
+                                            <p className="mt-1 font-bold">
+                                                {result.diagnostics.evaluation.p90_absolute_error_minutes != null
+                                                    ? `${result.diagnostics.evaluation.p90_absolute_error_minutes.toFixed(2)} min`
+                                                    : "N/A"}
+                                            </p>
+                                            <p className="mt-1 text-xs text-gray-500">
+                                                90% of evaluated errors were below this value.
+                                            </p>
+                                        </div>
+
+                                    </div>
+                                ) : (
+                                    <div className="mt-4 rounded-xl border border-dashed bg-gray-50 p-4">
+                                        <p className="font-semibold">
+                                            Evaluation metrics not available yet
+                                        </p>
+
+                                        <p className="mt-1 text-sm text-gray-600">
+                                            Evaluation metrics are unavailable for
+                                            the model serving this prediction.</p>
+                                    </div>
+                                )}
+                            </div>
+
                         </div>
-
-
-                        {/* Evaluation */}
-                        <div className="rounded-2xl border bg-white p-5 shadow-sm">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                Model Evaluation
-                            </p>
-                            <p className="mt-2 text-xs leading-5 text-gray-500">
-                                These values are evaluation errors in minutes, not an accuracy percentage.
-                                Lower values indicate better performance.
-                            </p>
-
-                            {result.diagnostics?.evaluation ? (
-                                <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                    <div className="rounded-xl bg-gray-50 p-3">
-                                        <p className="text-xs text-gray-500">
-                                            MAE
-                                        </p>
-
-                                        <p className="mt-1 text-xl font-bold">
-                                            {result.diagnostics.evaluation.mae_minutes != null
-                                                ? `${result.diagnostics.evaluation.mae_minutes.toFixed(2)} min`
-                                                : "N/A"}
-                                        </p>
-                                        Average absolute prediction error.
-                                    </div>
-
-                                    <div className="rounded-xl bg-gray-50 p-3">
-                                        <p className="text-xs text-gray-500">
-                                            RMSE
-                                        </p>
-
-                                        <p className="mt-1 text-xl font-bold">
-                                            {result.diagnostics.evaluation.rmse_minutes != null
-                                                ? `${result.diagnostics.evaluation.rmse_minutes.toFixed(2)} min`
-                                                : "N/A"}
-                                        </p>
-                                        <p className="mt-1 text-xs text-gray-500">
-                                            Gives more weight to larger prediction errors.
-                                        </p>
-                                    </div>
-
-                                    <div className="rounded-xl bg-gray-50 p-3">
-                                        <p className="text-xs text-gray-500">
-                                            Median Error
-                                        </p>
-
-                                        <p className="mt-1 font-bold">
-                                            {result.diagnostics.evaluation.median_absolute_error_minutes != null
-                                                ? `${result.diagnostics.evaluation.median_absolute_error_minutes.toFixed(2)} min`
-                                                : "N/A"}
-                                        </p>
-                                        <p className="mt-1 text-xs text-gray-500">
-                                            Typical absolute prediction error.
-                                        </p>
-                                    </div>
-
-                                    <div className="rounded-xl bg-gray-50 p-3">
-                                        <p className="text-xs text-gray-500">
-                                            P90 Error
-                                        </p>
-
-                                        <p className="mt-1 font-bold">
-                                            {result.diagnostics.evaluation.p90_absolute_error_minutes != null
-                                                ? `${result.diagnostics.evaluation.p90_absolute_error_minutes.toFixed(2)} min`
-                                                : "N/A"}
-                                        </p>
-                                        <p className="mt-1 text-xs text-gray-500">
-                                            90% of evaluated errors were below this value.
-                                        </p>
-                                    </div>
-
-                                </div>
-                            ) : (
-                                <div className="mt-4 rounded-xl border border-dashed bg-gray-50 p-4">
-                                    <p className="font-semibold">
-                                        Evaluation metrics not available yet
-                                    </p>
-
-                                    <p className="mt-1 text-sm text-gray-600">
-                                        Evaluation metrics are unavailable for
-                                        the model serving this prediction.</p>
-                                </div>
-                            )}
-                        </div>
-
-                    </div>
-                     )}
+                    )}
                 </div>
             )}
 
