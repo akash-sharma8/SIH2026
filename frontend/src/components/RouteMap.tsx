@@ -82,26 +82,78 @@ function MapAutoFit({
     const map = useMap();
 
     useEffect(() => {
-        const points: L.LatLngExpression[] =
-            route.stations
-                .filter((station) =>
-                    isValidIndiaCoordinate(
-                        station.latitude,
-                        station.longitude,
-                    ),
-                )
-                .map(
-                    (station) => [
-                        station.latitude,
-                        station.longitude,
-                    ],
+        const validStations = route.stations.filter(
+            (station) =>
+                isValidIndiaCoordinate(
+                    station.latitude,
+                    station.longitude,
+                ),
+        );
+
+        const isCompletedJourney =
+            validStations.length > 0 &&
+            validStations.every(
+                (station) =>
+                    station.status === "PASSED" ||
+                    station.status === "CURRENT" ||
+                    station.status === "DESTINATION",
+            );
+
+        let focusStations: RouteStation[];
+
+        if (isCompletedJourney) {
+            // Completed journey: show complete route.
+            focusStations = validStations;
+        } else {
+            // Running journey:
+            // focus around current/next + a few upcoming stations.
+            const currentIndex =
+                validStations.findIndex(
+                    (station) =>
+                        station.status === "CURRENT",
                 );
 
+            const nextIndex =
+                validStations.findIndex(
+                    (station) =>
+                        station.status === "NEXT",
+                );
 
+            const anchorIndex =
+                currentIndex >= 0
+                    ? currentIndex
+                    : nextIndex >= 0
+                        ? nextIndex
+                        : 0;
+
+            const startIndex = Math.max(
+                0,
+                anchorIndex - 1,
+            );
+
+            const endIndex = Math.min(
+                validStations.length,
+                anchorIndex + 6,
+            );
+
+            focusStations =
+                validStations.slice(
+                    startIndex,
+                    endIndex,
+                );
+        }
+
+        const points: L.LatLngExpression[] =
+            focusStations.map(
+                (station) => [
+                    station.latitude,
+                    station.longitude,
+                ],
+            );
 
         if (
-            route.current_position
-            && isValidIndiaCoordinate(
+            route.current_position &&
+            isValidIndiaCoordinate(
                 route.current_position.latitude,
                 route.current_position.longitude,
             )
@@ -116,26 +168,28 @@ function MapAutoFit({
             return;
         }
 
-        const bounds = L.latLngBounds(
-            points,
-        );
+        if (points.length === 1) {
+            map.setView(
+                points[0] as L.LatLngExpression,
+                9,
+            );
+            return;
+        }
+
+        const bounds =
+            L.latLngBounds(points);
 
         map.fitBounds(
             bounds,
             {
-                padding: [40, 40],
+                padding: [45, 45],
                 maxZoom: 9,
             },
         );
-
-    }, [
-        map,
-        route,
-    ]);
+    }, [map, route]);
 
     return null;
 }
-
 
 function stationRadius(
     status: RouteStation["status"],
@@ -244,14 +298,15 @@ export default function RouteMap({
                 ] as [number, number],
         );
 
+    const currentPosition =
+        route.current_position ?? null;
 
     const hasValidCurrentPosition =
-        route.current_position
-        && isValidIndiaCoordinate(
-            route.current_position.latitude,
-            route.current_position.longitude,
+        currentPosition !== null &&
+        isValidIndiaCoordinate(
+            currentPosition.latitude,
+            currentPosition.longitude,
         );
-
     const center: [number, number] =
         hasValidCurrentPosition
             ? [
@@ -269,13 +324,13 @@ export default function RouteMap({
     );
 
     return (
-        <div className="w-full overflow-hidden rounded-2xl border">
+        <div className="relative z-0 isolate w-full overflow-hidden rounded-2xl border">
             <div className="h-[520px]">
                 <MapContainer
                     center={center}
                     zoom={6}
                     scrollWheelZoom
-                    className="h-full w-full"
+                    className="relative z-0 h-full w-full"
                 >
                     <TileLayer
                         attribution="&copy; OpenStreetMap contributors"
@@ -496,23 +551,22 @@ export default function RouteMap({
                     })}
 
 
-                    {route.current_position && (
+                    {hasValidCurrentPosition && currentPosition && (
                         <CircleMarker
                             center={[
-                                route.current_position
-                                    .latitude,
-
-                                route.current_position
-                                    .longitude,
+                                currentPosition.latitude,
+                                currentPosition.longitude,
                             ]}
-                            radius={13}
-                            weight={5}
+                            radius={11}
+                            weight={4}
+                            color="#0369a1"
+                            fillColor="#0ea5e9"
                             fillOpacity={1}
                         >
                             <Tooltip
                                 permanent
-                                direction="top"
-                                offset={[0, -12]}
+                                direction="bottom"
+                                offset={[0, 14]}
                             >
                                 <div className="font-bold">
                                     🚆 LIVE TRAIN
@@ -529,18 +583,17 @@ export default function RouteMap({
 
                                     Source:{" "}
                                     {
-                                        route.current_position
+                                        currentPosition
                                             .position_source
                                     }
 
-                                    {route.current_position
+                                    {currentPosition
                                         .accuracy_note && (
                                             <>
                                                 <br />
 
                                                 {
-                                                    route
-                                                        .current_position
+                                                    currentPosition
                                                         .accuracy_note
                                                 }
                                             </>
@@ -559,7 +612,7 @@ export default function RouteMap({
 
                 <span className="flex items-center gap-1">
                     <span className="inline-block h-2.5 w-2.5 rounded-full bg-green-500" />
-                    Completed journey
+                    Completed segment
                 </span>
 
                 <span className="flex items-center gap-1">

@@ -1,6 +1,7 @@
 "use client";
 
-import Link from "next/link";
+
+import AppNavbar from "@/components/AppNavbar";
 import {
     useEffect,
     useState,
@@ -240,544 +241,605 @@ export default function ModelIntelligencePage() {
 
 
     return (
-        <main className="min-h-screen bg-slate-50 text-slate-900">
-            <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <main className="min-h-screen bg-[#f7f9fb] text-slate-950">
 
-                {/* Header */}
-                <header className="rounded-3xl border bg-white p-5 shadow-sm sm:p-6">
-                    <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-                        <div>
-                            <p className="text-xs font-bold uppercase tracking-[0.25em] text-blue-600">
-                                RailETA Intelligence
-                            </p>
+            <AppNavbar role="Model intelligence" />
 
-                            <h1 className="mt-2 text-3xl font-black sm:text-4xl">
-                                Model Intelligence
-                            </h1>
+            <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
 
-                            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-                                Model routing,
-                                evaluation metrics and
-                                explainability for the
-                                RailETA forecasting
-                                pipeline.
-                            </p>
-                        </div>
-
-                        <div className="flex flex-wrap gap-2">
-                            <Link
-                                href="/"
-                                className="rounded-xl border bg-white px-4 py-2 text-sm font-semibold hover:bg-slate-50"
-                            >
-                                Passenger View
-                            </Link>
-
-                            <Link
-                                href="/station-display"
-                                className="rounded-xl border bg-white px-4 py-2 text-sm font-semibold hover:bg-slate-50"
-                            >
-                                Station Display
-                            </Link>
-
-                            <Link
-                                href="/control-room"
-                                className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
-                            >
-                                Control Room
-                            </Link>
-                        </div>
-                    </div>
-                </header>
-
-
-                {/* Architecture */}
-                <section className="mt-6 rounded-3xl border bg-white p-5 shadow-sm sm:p-6">
+                {/* Page header */}
+                <section className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                     <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">
-                            How RailETA Works
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700">
+                            Model intelligence
                         </p>
 
-                        <h2 className="mt-2 text-2xl font-black">
-                            The right model is used at
-                            each stage of the journey
+                        <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
+                            RailETA prediction models
+                        </h1>
+
+                        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
+                            Evaluation, routing and explainability for the models
+                            serving running-train ETA predictions.
+                        </p>
+                    </div>
+
+                    <span className="w-fit rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
+                        Production runtime: Model 2 + Model 3
+                    </span>
+                </section>
+
+                {/* Runtime architecture */}
+                <section className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+
+                    <div className="border-b border-slate-100 px-5 py-4 sm:px-6">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">
+                            Model routing
+                        </p>
+
+                        <h2 className="mt-1 text-xl font-bold text-slate-950">
+                            Different forecast horizons use different models
                         </h2>
 
-                        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-                            RailETA does not use one model
-                            for every situation. It selects
-                            a different model depending on
-                            whether the train has not started,
-                            is approaching the next station,
-                            or is predicting stations further
-                            ahead.
+                        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
+                            Running journeys are routed by forecast horizon so the
+                            immediate next-station prediction and later-station predictions
+                            can use models specialized for those tasks.
                         </p>
                     </div>
 
-                    <div className="mt-6 grid gap-4 lg:grid-cols-3">
-                        <div className="rounded-2xl border bg-slate-50 p-5">
-                            <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700">
-                                BEFORE TRAIN STARTS
-                            </span>
+                    <div className="grid gap-4 p-5 lg:grid-cols-2 sm:p-6">
 
-                            <p className="mt-4 text-xl font-black">
-                                Model 1
+                        {/* Model 2 */}
+                        <article className="rounded-2xl border border-sky-200 bg-sky-50/60 p-5">
+                            <div className="flex items-start justify-between gap-4">
+                                <div>
+                                    <span className="rounded-full border border-sky-200 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-sky-700">
+                                        Running · next station
+                                    </span>
+
+                                    <h3 className="mt-4 text-xl font-bold text-slate-950">
+                                        Model 2
+                                    </h3>
+
+                                    <p className="mt-1 text-sm font-semibold text-slate-700">
+                                        Next Station ETA Model
+                                    </p>
+                                </div>
+
+                                <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600">
+                                    CatBoost
+                                </span>
+                            </div>
+
+                            <p className="mt-4 text-sm leading-6 text-slate-600">
+                                Specialist model for the immediate next-station ETA
+                                during a verified running journey.
                             </p>
 
-                            <p className="mt-2 text-sm leading-6 text-slate-600">
-                                Estimates the expected delay
-                                before the train starts running.
+                            <div className="mt-5 rounded-xl border border-sky-100 bg-white p-4">
+                                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                    Router condition
+                                </p>
+
+                                <p className="mt-1 text-sm font-semibold text-slate-900">
+                                    RUNNING → next station
+                                </p>
+                            </div>
+                        </article>
+
+                        {/* Model 3 */}
+                        <article className="rounded-2xl border border-violet-200 bg-violet-50/60 p-5">
+                            <div className="flex items-start justify-between gap-4">
+                                <div>
+                                    <span className="rounded-full border border-violet-200 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-violet-700">
+                                        Running · later stations
+                                    </span>
+
+                                    <h3 className="mt-4 text-xl font-bold text-slate-950">
+                                        Model 3
+                                    </h3>
+
+                                    <p className="mt-1 text-sm font-semibold text-slate-700">
+                                        Multi-horizon ETA Model
+                                    </p>
+                                </div>
+
+                                <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600">
+                                    CatBoost
+                                </span>
+                            </div>
+
+                            <p className="mt-4 text-sm leading-6 text-slate-600">
+                                Guarded residual model for stations further ahead
+                                in the same running journey.
                             </p>
-                        </div>
 
-                        <div className="rounded-2xl border bg-slate-50 p-5">
-                            <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">
-                                RUNNING · NEXT
-                            </span>
+                            <div className="mt-5 rounded-xl border border-violet-100 bg-white p-4">
+                                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                    Router condition
+                                </p>
 
-                            <p className="mt-4 text-xl font-black">
-                                Model 2
-                            </p>
-
-                            <p className="mt-2 text-sm leading-6 text-slate-600">
-                                Predicts arrival at the very
-                                next station using current
-                                journey information.
-                            </p>
-                        </div>
-
-                        <div className="rounded-2xl border bg-slate-50 p-5">
-                            <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-bold text-purple-700">
-                                RUNNING · LATER
-                            </span>
-
-                            <p className="mt-4 text-xl font-black">
-                                Model 3
-                            </p>
-
-                            <p className="mt-2 text-sm leading-6 text-slate-600">
-                                Predicts arrival for stations
-                                further ahead on the route.
-                            </p>
-                        </div>
+                                <p className="mt-1 text-sm font-semibold text-slate-900">
+                                    RUNNING → later stations
+                                </p>
+                            </div>
+                        </article>
                     </div>
 
-                    <div className="mt-5 rounded-2xl bg-slate-950 p-5 text-white">
-                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                            Request Flow
+                    {/* Request flow */}
+                    <div className="border-t border-slate-100 bg-slate-50/60 px-5 py-4 sm:px-6">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                            Request flow
                         </p>
 
-                        <p className="mt-3 font-mono text-sm leading-7 text-slate-200">
-                            Journey State
-                            {" → "}
-                            Forecast Horizon
-                            {" → "}
-                            Model Router
-                            {" → "}
-                            Served Prediction
-                        </p>
+                        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm font-medium text-slate-700">
+                            <span className="rounded-lg border border-slate-200 bg-white px-3 py-1.5">
+                                Journey state
+                            </span>
+
+                            <span className="text-slate-400">→</span>
+
+                            <span className="rounded-lg border border-slate-200 bg-white px-3 py-1.5">
+                                Forecast horizon
+                            </span>
+
+                            <span className="text-slate-400">→</span>
+
+                            <span className="rounded-lg border border-slate-200 bg-white px-3 py-1.5">
+                                Model router
+                            </span>
+
+                            <span className="text-slate-400">→</span>
+
+                            <span className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-1.5 text-sky-700">
+                                Served prediction
+                            </span>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Future enhancement */}
+                <section className="mt-4 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm sm:px-6">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                                Future enhancement
+                            </p>
+
+                            <h3 className="mt-1 font-bold text-slate-950">
+                                Model 1 · Pre-departure delay
+                            </h3>
+
+                            <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">
+                                A LightGBM pre-departure model exists experimentally,
+                                but it is not part of the current passenger product flow.
+                                The current system focuses on running-train ETA prediction.
+                            </p>
+                        </div>
+
+                        <span className="w-fit rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-semibold uppercase text-slate-600">
+                            Experimental
+                        </span>
                     </div>
                 </section>
 
 
                 {/* Evaluation */}
-                <section className="mt-6">
+                <section className="mt-6 space-y-4">
+
                     <div>
-                        <h2 className="text-2xl font-black">
-                            How reliable are the models?
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">
+                            Model evaluation
+                        </p>
+
+                        <h2 className="mt-1 text-xl font-bold text-slate-950">
+                            Production model performance
                         </h2>
 
-                        <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
-                            RailETA evaluates each model using
-                            prediction error in minutes.
-                            Lower error means the model's estimate
-                            was closer to the actual arrival or delay.
+                        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
+                            Metrics below are prediction errors measured in minutes.
+                            Lower values indicate predictions closer to the observed outcome.
+                            These values are not accuracy percentages.
                         </p>
                     </div>
 
-                    <div className="mt-4 grid gap-5 lg:grid-cols-3">
-                        {MODEL_SNAPSHOTS.map(
-                            (model) => (
+                    <div className="grid gap-4 lg:grid-cols-2">
+                        {MODEL_SNAPSHOTS
+                            .filter((model) => model.id === "M2" || model.id === "M3")
+                            .map((model) => (
                                 <article
                                     key={model.id}
-                                    className="rounded-3xl border bg-white p-5 shadow-sm"
+                                    className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
                                 >
-                                    <div className="flex items-start justify-between gap-4">
+                                    <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
                                         <div>
-                                            <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600">
-                                                {
-                                                    model.id
-                                                }
+                                            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-700">
+                                                {model.id}
                                             </p>
 
-                                            <h3 className="mt-2 text-xl font-black">
-                                                {
-                                                    model.name
-                                                }
+                                            <h3 className="mt-1 text-lg font-bold text-slate-950">
+                                                {model.name}
                                             </h3>
+
+                                            <p className="mt-2 text-sm leading-6 text-slate-500">
+                                                {model.role}
+                                            </p>
                                         </div>
 
-                                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
-                                            {
-                                                model.engine
-                                            }
+                                        <span className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-semibold text-slate-600">
+                                            {model.engine}
                                         </span>
                                     </div>
 
-                                    <p className="mt-3 text-sm leading-6 text-slate-600">
-                                        {model.role}
-                                    </p>
-                                    {model.id === "M2" && (
-                                        <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                                            <div className="rounded-xl bg-blue-50 p-4">
-                                                <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
-                                                    Typical error
-                                                </p>
+                                    <div className="grid grid-cols-2 gap-px bg-slate-100 sm:grid-cols-4">
+                                        <div className="bg-white p-4">
+                                            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                                MAE
+                                            </p>
 
-                                                <p className="mt-1 text-2xl font-black text-slate-900">
-                                                    {model.mae.toFixed(1)} min
-                                                </p>
-                                            </div>
-
-                                            <div className="rounded-xl bg-blue-50 p-4">
-                                                <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
-                                                    Most predictions within
-                                                </p>
-
-                                                <p className="mt-1 text-2xl font-black text-slate-900">
-                                                    {model.p90.toFixed(1)} min
-                                                </p>
-                                            </div>
-
-                                            <div className="rounded-xl bg-blue-50 p-4">
-                                                <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
-                                                    Tested on
-                                                </p>
-
-                                                <p className="mt-1 text-2xl font-black text-slate-900">
-                                                    {model.samples.toLocaleString()}
-                                                </p>
-
-                                                <p className="mt-1 text-xs text-slate-500">
-                                                    examples
-                                                </p>
-                                            </div>
+                                            <p className="mt-1.5 text-xl font-bold text-slate-950">
+                                                {model.mae.toFixed(2)}
+                                                <span className="ml-1 text-xs font-medium text-slate-400">
+                                                    min
+                                                </span>
+                                            </p>
                                         </div>
-                                    )}
-                                    <details className="mt-5 rounded-xl border bg-white">
-                                        <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-slate-700">
-                                            Advanced technical metrics
-                                        </summary>
 
-                                        <div className="grid grid-cols-2 gap-3 border-t p-4">
-                                            <div className="rounded-xl bg-slate-50 p-3">
-                                                <p className="text-xs text-slate-500">
-                                                    MAE
-                                                </p>
+                                        <div className="bg-white p-4">
+                                            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                                RMSE
+                                            </p>
 
-                                                <p className="mt-1 text-lg font-black">
-                                                    {model.mae.toFixed(2)} min
-                                                </p>
-                                            </div>
-
-                                            <div className="rounded-xl bg-slate-50 p-3">
-                                                <p className="text-xs text-slate-500">
-                                                    RMSE
-                                                </p>
-
-                                                <p className="mt-1 text-lg font-black">
-                                                    {model.rmse.toFixed(2)} min
-                                                </p>
-                                            </div>
-
-                                            <div className="rounded-xl bg-slate-50 p-3">
-                                                <p className="text-xs text-slate-500">
-                                                    Median error
-                                                </p>
-
-                                                <p className="mt-1 text-lg font-black">
-                                                    {model.median.toFixed(2)} min
-                                                </p>
-                                            </div>
-
-                                            <div className="rounded-xl bg-slate-50 p-3">
-                                                <p className="text-xs text-slate-500">
-                                                    P90 error
-                                                </p>
-
-                                                <p className="mt-1 text-lg font-black">
-                                                    {model.p90.toFixed(2)} min
-                                                </p>
-                                            </div>
+                                            <p className="mt-1.5 text-xl font-bold text-slate-950">
+                                                {model.rmse.toFixed(2)}
+                                                <span className="ml-1 text-xs font-medium text-slate-400">
+                                                    min
+                                                </span>
+                                            </p>
                                         </div>
-                                    </details>
-                                    <p className="mt-4 text-xs text-slate-500">
-                                        Evaluation samples:{" "}
-                                        <span className="font-semibold text-slate-700">
-                                            {model.samples.toLocaleString(
-                                                "en-IN",
-                                            )}
+
+                                        <div className="bg-white p-4">
+                                            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                                Median
+                                            </p>
+
+                                            <p className="mt-1.5 text-xl font-bold text-slate-950">
+                                                {model.median.toFixed(2)}
+                                                <span className="ml-1 text-xs font-medium text-slate-400">
+                                                    min
+                                                </span>
+                                            </p>
+                                        </div>
+
+                                        <div className="bg-white p-4">
+                                            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                                P90
+                                            </p>
+
+                                            <p className="mt-1.5 text-xl font-bold text-slate-950">
+                                                {model.p90.toFixed(2)}
+                                                <span className="ml-1 text-xs font-medium text-slate-400">
+                                                    min
+                                                </span>
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/60 px-5 py-3">
+                                        <span className="text-[11px] text-slate-500">
+                                            Evaluation samples:{" "}
+                                            <strong className="font-semibold text-slate-700">
+                                                {model.samples.toLocaleString("en-IN")}
+                                            </strong>
                                         </span>
-                                    </p>
+
+                                        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold text-emerald-700">
+                                            Production runtime
+                                        </span>
+                                    </div>
                                 </article>
-                            ),
-                        )}
+                            ))}
                     </div>
+
+                    {/* Experimental Model 1 */}
+                    {MODEL_SNAPSHOTS
+                        .filter((model) => model.id === "M1")
+                        .map((model) => (
+                            <article
+                                key={model.id}
+                                className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+                            >
+                                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                    <div>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                                                {model.id}
+                                            </p>
+
+                                            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[9px] font-semibold uppercase text-slate-600">
+                                                Experimental
+                                            </span>
+                                        </div>
+
+                                        <h3 className="mt-2 text-lg font-bold text-slate-950">
+                                            {model.name}
+                                        </h3>
+
+                                        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
+                                            {model.role}
+                                        </p>
+                                    </div>
+
+                                    <span className="w-fit rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-semibold text-slate-600">
+                                        {model.engine}
+                                    </span>
+                                </div>
+
+                                <div className="mt-4 grid gap-3 sm:grid-cols-5">
+                                    <div className="rounded-xl bg-slate-50 p-3">
+                                        <p className="text-[10px] uppercase tracking-wide text-slate-400">
+                                            MAE
+                                        </p>
+                                        <p className="mt-1 font-bold text-slate-900">
+                                            {model.mae.toFixed(2)} min
+                                        </p>
+                                    </div>
+
+                                    <div className="rounded-xl bg-slate-50 p-3">
+                                        <p className="text-[10px] uppercase tracking-wide text-slate-400">
+                                            RMSE
+                                        </p>
+                                        <p className="mt-1 font-bold text-slate-900">
+                                            {model.rmse.toFixed(2)} min
+                                        </p>
+                                    </div>
+
+                                    <div className="rounded-xl bg-slate-50 p-3">
+                                        <p className="text-[10px] uppercase tracking-wide text-slate-400">
+                                            Median
+                                        </p>
+                                        <p className="mt-1 font-bold text-slate-900">
+                                            {model.median.toFixed(2)} min
+                                        </p>
+                                    </div>
+
+                                    <div className="rounded-xl bg-slate-50 p-3">
+                                        <p className="text-[10px] uppercase tracking-wide text-slate-400">
+                                            P90
+                                        </p>
+                                        <p className="mt-1 font-bold text-slate-900">
+                                            {model.p90.toFixed(2)} min
+                                        </p>
+                                    </div>
+
+                                    <div className="rounded-xl bg-slate-50 p-3">
+                                        <p className="text-[10px] uppercase tracking-wide text-slate-400">
+                                            Samples
+                                        </p>
+                                        <p className="mt-1 font-bold text-slate-900">
+                                            {model.samples.toLocaleString("en-IN")}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <p className="mt-4 text-[11px] leading-5 text-slate-500">
+                                    This model is retained for future pre-departure experimentation
+                                    and is not part of the current passenger runtime flow.
+                                </p>
+                            </article>
+                        ))}
                 </section>
 
 
                 {/* Live served-model inspector */}
-                <section className="mt-6 rounded-3xl border bg-white p-5 shadow-sm sm:p-6">
-                    <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">
-                            See RailETA in Action
+                <section className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+
+                    <div className="border-b border-slate-100 px-5 py-4 sm:px-6">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">
+                            Live model inspector
                         </p>
 
-                        <h2 className="mt-2 text-2xl font-black">
-                            Check which model is being used
+                        <h2 className="mt-1 text-xl font-bold text-slate-950">
+                            See which model is serving a live forecast
                         </h2>
 
-                        <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
-                            Search for a train to see which RailETA model is serving the
-                            current forecast and what it predicts for the next station.
+                        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
+                            Search for a train to inspect the currently served prediction,
+                            forecast horizon and confidence.
                         </p>
                     </div>
 
-                    <div className="relative mt-5 max-w-2xl">
-                        <div className="flex flex-col gap-3 sm:flex-row">
-                            <div className="relative flex-1">
-                                <input
-                                    value={query}
-                                    onChange={(
-                                        event,
-                                    ) =>
-                                        searchTrain(
-                                            event.target
-                                                .value,
-                                        )
-                                    }
-                                    placeholder="Train name or number"
-                                    className="w-full rounded-xl border px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                                />
+                    <div className="p-5 sm:p-6">
 
-                                {searchResults.length
-                                    > 0 && (
-                                        <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-xl border bg-white shadow-xl">
+                        {/* Search */}
+                        <div className="relative max-w-3xl">
+                            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+
+                                <div className="relative">
+                                    <label
+                                        htmlFor="model-inspector-search"
+                                        className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500"
+                                    >
+                                        Train name or number
+                                    </label>
+
+                                    <input
+                                        id="model-inspector-search"
+                                        value={query}
+                                        onChange={(event) =>
+                                            searchTrain(
+                                                event.target.value,
+                                            )
+                                        }
+                                        placeholder="Search train name or number"
+                                        className="h-11 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+                                    />
+
+                                    {searchResults.length > 0 && (
+                                        <div className="absolute left-0 right-0 top-full z-30 mt-2 max-h-80 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl">
                                             {searchResults.map(
-                                                (
-                                                    train,
-                                                ) => (
+                                                (train) => (
                                                     <button
-                                                        key={
-                                                            train.train_number
-                                                        }
+                                                        key={train.train_number}
                                                         type="button"
                                                         onClick={() =>
-                                                            selectTrain(
-                                                                train,
-                                                            )
+                                                            selectTrain(train)
                                                         }
-                                                        className="flex w-full items-start justify-between gap-4 border-b px-4 py-3 text-left last:border-b-0 hover:bg-slate-50"
+                                                        className="flex w-full items-start justify-between gap-4 border-b border-slate-100 px-4 py-3 text-left transition last:border-b-0 hover:bg-slate-50"
                                                     >
                                                         <div>
-                                                            <p className="font-semibold">
-                                                                {
-                                                                    train.train_name
-                                                                }
+                                                            <p className="font-semibold text-slate-950">
+                                                                {train.train_name}
                                                             </p>
 
-                                                            <p className="text-xs text-slate-500">
-                                                                {
-                                                                    train.train_number
-                                                                }
+                                                            <p className="mt-1 text-xs text-slate-500">
+                                                                {train.train_number}
                                                             </p>
                                                         </div>
+
+                                                        <p className="text-[10px] font-medium text-slate-400">
+                                                            Select
+                                                        </p>
                                                     </button>
                                                 ),
                                             )}
                                         </div>
                                     )}
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={inspectForecast}
+                                    disabled={
+                                        loading ||
+                                        !trainNumber
+                                    }
+                                    className="mt-auto inline-flex h-11 items-center justify-center rounded-xl bg-[#0876c9] px-5 text-sm font-semibold text-white transition hover:bg-[#0667af] disabled:cursor-not-allowed disabled:opacity-40"
+                                >
+                                    {loading
+                                        ? "Inspecting..."
+                                        : "Inspect forecast"}
+                                </button>
                             </div>
-
-                            <button
-                                type="button"
-                                onClick={
-                                    inspectForecast
-                                }
-                                disabled={
-                                    loading
-                                    || !trainNumber
-                                }
-                                className="rounded-xl bg-slate-950 px-5 py-3 font-semibold text-white disabled:opacity-40"
-                            >
-                                {loading
-                                    ? "Inspecting..."
-                                    : "Inspect"}
-                            </button>
                         </div>
-                    </div>
 
-                    {error && (
-                        <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
-                            {error}
-                        </div>
-                    )}
+                        {/* Error */}
+                        {error && (
+                            <div className="mt-5 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+                                {error}
+                            </div>
+                        )}
 
-                    {result && (
-                        <div className="mt-6 space-y-4">
-                            <div className="rounded-2xl border bg-slate-50 p-5">
-                                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        {/* Result */}
+                        {result && (
+                            <div className="mt-6 space-y-4">
+
+                                {/* Train + model */}
+                                <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-slate-50/60 p-5 sm:flex-row sm:items-start sm:justify-between">
                                     <div>
-                                        <p className="text-xs uppercase tracking-wide text-slate-500">
+                                        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
                                             Train
                                         </p>
 
-                                        <p className="mt-1 text-xl font-black">
-                                            {result.journey
-                                                .train_name
-                                                ?? "Train"}
-                                        </p>
+                                        <h3 className="mt-1 text-lg font-bold text-slate-950">
+                                            {result.journey.train_name ?? "Train"}
+                                        </h3>
 
                                         <p className="mt-1 text-sm text-slate-500">
-                                            {
-                                                result.journey
-                                                    .train_number
-                                            }
+                                            {result.journey.train_number}
                                         </p>
                                     </div>
 
                                     {nextPrediction && (
-                                        <div className="rounded-xl bg-white px-4 py-3 shadow-sm">
-                                            <p className="text-xs uppercase tracking-wide text-slate-500">
-Model currently in use
+                                        <div className="rounded-xl border border-sky-200 bg-white px-4 py-3">
+                                            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                                                Model currently in use
                                             </p>
 
-                                            <p className="mt-1 font-black text-blue-700">
+                                            <p className="mt-1 text-sm font-bold text-sky-700">
                                                 {engineLabel(
-                                                    nextPrediction
-                                                        .model
-                                                        .prediction_engine,
+                                                    nextPrediction.model.prediction_engine,
                                                 )}
                                             </p>
                                         </div>
                                     )}
                                 </div>
-                            </div>
 
-                            {nextPrediction ? (
-                                <div className="grid gap-4 md:grid-cols-3">
-                                    <div className="rounded-2xl border bg-white p-4">
-                                        <p className="text-xs uppercase tracking-wide text-slate-500">
-                                            Next Station
-                                        </p>
+                                {nextPrediction ? (
+                                    <div className="grid gap-3 md:grid-cols-3">
 
-                                        <p className="mt-2 text-xl font-black">
-                                            {nextPrediction
-                                                .station
-                                                .name
-                                                ?? nextPrediction
-                                                    .station
-                                                    .code}
-                                        </p>
-                                    </div>
+                                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                                            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                                                Next station
+                                            </p>
 
-                                    <div className="rounded-2xl border bg-white p-4">
-                                        <p className="text-xs uppercase tracking-wide text-slate-500">
-                                            Expected delay
-                                        </p>
+                                            <p className="mt-2 text-lg font-bold text-slate-950">
+                                                {nextPrediction.station.name
+                                                    ?? nextPrediction.station.code}
+                                            </p>
 
-                                        <p className="mt-2 text-xl font-black">
-                                            {
-                                                nextPrediction
-                                                    .forecast
-                                                    .predicted_delay_min
-                                            }
-                                            {" min"}
-                                        </p>
-                                    </div>
+                                            <p className="mt-1 text-xs text-slate-400">
+                                                {nextPrediction.station.code}
+                                            </p>
+                                        </div>
 
-                                    <div className="rounded-2xl border bg-white p-4">
-                                        <p className="text-xs uppercase tracking-wide text-slate-500">
-                                            Confidence
-                                        </p>
+                                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                                            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                                                Expected delay
+                                            </p>
 
-                                        <p className="mt-2 text-xl font-black">
-                                            {
-                                                nextPrediction
-                                                    .forecast
-                                                    .confidence
-                                            }
-                                        </p>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="rounded-2xl border border-dashed bg-slate-50 p-5">
-                                    <p className="font-semibold">
-                                        No running prediction
-                                        is being served for
-                                        this journey state.
-                                    </p>
+                                            <p className="mt-2 text-lg font-bold text-slate-950">
+                                                {nextPrediction.forecast.predicted_delay_min > 0
+                                                    ? `+${nextPrediction.forecast.predicted_delay_min.toFixed(1)} min`
+                                                    : nextPrediction.forecast.predicted_delay_min < 0
+                                                        ? `${nextPrediction.forecast.predicted_delay_min.toFixed(1)} min`
+                                                        : "On time"}
+                                            </p>
+                                        </div>
 
-                                    <p className="mt-1 text-sm text-slate-500">
-                                        The journey may be
-                                        scheduled, completed,
-                                        or waiting for
-                                        sufficient verified
-                                        observations.
-                                    </p>
-                                </div>
-                            )}
+                                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                                            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                                                Confidence
+                                            </p>
 
-                            {result.diagnostics
-                                ?.prediction_explanation
-                                ?.explanation_available && (
-                                    <div className="rounded-2xl border bg-white p-5">
-                                        <h3 className="font-black">
-                                            Current Prediction
-                                            Explanation
-                                        </h3>
-
-                                        <p className="mt-1 text-xs text-slate-500">
-                                            Associations shown
-                                            here are model
-                                            attributions, not
-                                            proof of causality.
-                                        </p>
-
-                                        <div className="mt-4 grid gap-3 md:grid-cols-3">
-                                            {result.diagnostics
-                                                .prediction_explanation
-                                                .factors
-                                                .slice(0, 3)
-                                                .map(
-                                                    (
-                                                        factor,
-                                                    ) => (
-                                                        <div
-                                                            key={`${factor.feature}-${factor.rank ?? 0}`}
-                                                            className="rounded-xl bg-slate-50 p-4"
-                                                        >
-                                                            <p className="font-bold">
-                                                                {factor.display_name
-                                                                    ?? factor.feature}
-                                                            </p>
-
-                                                            <p className="mt-2 text-sm text-slate-600">
-                                                                {factor.direction
-                                                                    === "INCREASES_DELAY"
-                                                                    ? "Associated with a later ETA."
-                                                                    : factor.direction
-                                                                        === "REDUCES_DELAY"
-                                                                        ? "Associated with an earlier ETA."
-                                                                        : "Influences the current forecast."}
-                                                            </p>
-                                                        </div>
-                                                    ),
-                                                )}
+                                            <span
+                                                className={[
+                                                    "mt-2 inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold",
+                                                    nextPrediction.forecast.confidence === "HIGH"
+                                                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                                        : nextPrediction.forecast.confidence === "MEDIUM"
+                                                            ? "border-amber-200 bg-amber-50 text-amber-700"
+                                                            : "border-slate-200 bg-slate-50 text-slate-600",
+                                                ].join(" ")}
+                                            >
+                                                {nextPrediction.forecast.confidence}
+                                            </span>
                                         </div>
                                     </div>
+                                ) : (
+                                    <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5">
+                                        <p className="font-semibold text-slate-900">
+                                            No running prediction is currently being served
+                                        </p>
+
+                                        <p className="mt-1 text-sm leading-6 text-slate-500">
+                                            This journey state does not currently expose a running-train
+                                            prediction for inspection.
+                                        </p>
+                                    </div>
                                 )}
-                        </div>
-                    )}
+
+                                {/* Truthfulness note */}
+                                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                                    <p className="text-[11px] leading-5 text-slate-500">
+                                        The inspector shows the model actually returned by the live
+                                        forecast response. It does not infer or fabricate a model route.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </section>
             </div>
         </main>

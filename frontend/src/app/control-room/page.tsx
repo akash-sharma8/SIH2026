@@ -1,12 +1,12 @@
 "use client";
 
-import Link from "next/link";
+
 import {
     useEffect,
     useMemo,
     useState,
 } from "react";
-
+import AppNavbar from "@/components/AppNavbar";
 import {
     railEtaApi,
 } from "@/lib/api/raileta-api";
@@ -527,134 +527,177 @@ export default function ControlRoomPage() {
 
 
     return (
-        <main className="min-h-screen bg-slate-100 text-slate-900">
-            <div className="mx-auto max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8">
+        <main className="min-h-screen bg-[#f7f9fb] text-slate-950">
 
-                {/* Header */}
-                <header className="rounded-3xl border bg-white p-5 shadow-sm sm:p-6">
-                    <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-                        <div>
-                            <p className="text-xs font-bold uppercase tracking-[0.25em] text-blue-600">
-                                RailETA Operations
-                            </p>
+            <AppNavbar role="Control room" />
 
-                            <h1 className="mt-2 text-3xl font-black sm:text-4xl">
-                                Control Room
-                            </h1>
+            <div className="mx-auto max-w-[1500px] px-4 py-8 sm:px-6 lg:px-8">
 
-                            <p className="mt-2 max-w-2xl text-sm text-slate-600">
-                                Monitor selected trains
-                                using live RailETA
-                                forecasts, disruptions,
-                                delay risk and next
-                                station predictions.
-                            </p>
-                        </div>
-
-                        <div className="flex flex-wrap gap-2">
-                            <Link
-                                href="/"
-                                className="rounded-xl border bg-white px-4 py-2 text-sm font-semibold transition hover:bg-slate-50"
-                            >
-                                Passenger View
-                            </Link>
-
-                            <Link
-                                href="/station-display"
-                                className="rounded-xl border bg-white px-4 py-2 text-sm font-semibold transition hover:bg-slate-50"
-                            >
-                                Station Display
-                            </Link>
-
-                            <button
-                                type="button"
-                                onClick={
-                                    refreshAll
-                                }
-                                disabled={
-                                    refreshAllLoading
-                                    || monitoredTrains
-                                        .length === 0
-                                }
-                                className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-black disabled:opacity-40"
-                            >
-                                {refreshAllLoading
-                                    ? "Refreshing..."
-                                    : "Refresh All"}
-                            </button>
-                        </div>
-                    </div>
-                </header>
-
-
-                {/* Summary */}
-                <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                    <div className="rounded-2xl border bg-white p-5 shadow-sm">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                            Monitored
+                {/* Page header */}
+                <section className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+                    <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700">
+                            Control room
                         </p>
 
-                        <p className="mt-2 text-3xl font-black">
-                            {summary.total}
+                        <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
+                            Operations dashboard
+                        </h1>
+
+                        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                            Monitor selected trains using live ETA predictions,
+                            disruption alerts and delay risk.
                         </p>
                     </div>
 
-                    <div className="rounded-2xl border bg-white p-5 shadow-sm">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <button
+                        type="button"
+                        onClick={refreshAll}
+                        disabled={
+                            refreshAllLoading ||
+                            monitoredTrains.length === 0
+                        }
+                        className="inline-flex h-10 items-center justify-center rounded-xl bg-[#0876c9] px-5 text-sm font-semibold text-white transition hover:bg-[#0667af] disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                        {refreshAllLoading
+                            ? "Refreshing..."
+                            : "Refresh all trains"}
+                    </button>
+                </section>
+
+                {/* Operations KPIs */}
+                <section className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                            Monitored trains
+                        </p>
+
+                        <div className="mt-2 flex items-end justify-between gap-3">
+                            <p className="text-3xl font-bold text-slate-950">
+                                {summary.total}
+                            </p>
+
+                            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-600">
+                                Fleet
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
                             Running
                         </p>
 
-                        <p className="mt-2 text-3xl font-black">
-                            {summary.running}
-                        </p>
+                        <div className="mt-2 flex items-end justify-between gap-3">
+                            <p className="text-3xl font-bold text-slate-950">
+                                {summary.running}
+                            </p>
+
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold text-emerald-700">
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                                Active
+                            </span>
+                        </div>
                     </div>
 
-                    <div className="rounded-2xl border bg-white p-5 shadow-sm">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                            Service Alerts
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                            Service alerts
                         </p>
 
-                        <p className="mt-2 text-3xl font-black text-red-600">
-                            {
-                                summary.disruptions
-                            }
-                        </p>
+                        <div className="mt-2 flex items-end justify-between gap-3">
+                            <p
+                                className={[
+                                    "text-3xl font-bold",
+                                    summary.disruptions > 0
+                                        ? "text-rose-700"
+                                        : "text-slate-950",
+                                ].join(" ")}
+                            >
+                                {summary.disruptions}
+                            </p>
+
+                            <span
+                                className={[
+                                    "rounded-full border px-2.5 py-1 text-[10px] font-semibold",
+                                    summary.disruptions > 0
+                                        ? "border-rose-200 bg-rose-50 text-rose-700"
+                                        : "border-emerald-200 bg-emerald-50 text-emerald-700",
+                                ].join(" ")}
+                            >
+                                {summary.disruptions > 0
+                                    ? "Attention"
+                                    : "Clear"}
+                            </span>
+                        </div>
                     </div>
 
-                    <div className="rounded-2xl border bg-white p-5 shadow-sm">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
                             Delay ≥ 30 min
                         </p>
 
-                        <p className="mt-2 text-3xl font-black text-orange-600">
-                            {summary.highDelay}
-                        </p>
+                        <div className="mt-2 flex items-end justify-between gap-3">
+                            <p
+                                className={[
+                                    "text-3xl font-bold",
+                                    summary.highDelay > 0
+                                        ? "text-amber-700"
+                                        : "text-slate-950",
+                                ].join(" ")}
+                            >
+                                {summary.highDelay}
+                            </p>
+
+                            <span
+                                className={[
+                                    "rounded-full border px-2.5 py-1 text-[10px] font-semibold",
+                                    summary.highDelay > 0
+                                        ? "border-amber-200 bg-amber-50 text-amber-700"
+                                        : "border-slate-200 bg-slate-50 text-slate-600",
+                                ].join(" ")}
+                            >
+                                High delay
+                            </span>
+                        </div>
                     </div>
+
                 </section>
 
 
-                {/* Search */}
-                <section className="relative mt-6 rounded-3xl border bg-white p-5 shadow-sm">
-                    <div>
-                        <h2 className="text-lg font-bold">
-                            Add Train to Monitor
-                        </h2>
+                {/* Monitor controls */}
+                <section className="relative mt-6 overflow-visible rounded-2xl border border-slate-200 bg-white shadow-sm">
 
-                        <p className="mt-1 text-sm text-slate-500">
-                            Search using train name or
-                            number. Data is loaded from
-                            the existing live forecast
-                            API.
-                        </p>
+                    <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                        <div>
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">
+                                Fleet monitoring
+                            </p>
+
+                            <h2 className="mt-1 text-lg font-bold text-slate-950">
+                                Add train to monitor
+                            </h2>
+
+                            <p className="mt-1 text-sm text-slate-500">
+                                Search by train name or number and add a journey to the live operations board.
+                            </p>
+                        </div>
+
+                        <span className="w-fit rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-600">
+                            {monitoredTrains.length} monitored
+                        </span>
                     </div>
 
-                    <div className="relative mt-4 max-w-2xl">
-                        <div className="mt-4 max-w-xs">
+                    <div className="grid gap-4 p-5 sm:px-6 lg:grid-cols-[220px_minmax(0,1fr)]">
+
+                        {/* Journey date */}
+                        <div>
                             <label
                                 htmlFor="control-journey-date"
-                                className="mb-1 block text-sm font-semibold text-slate-700"
+                                className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500"
                             >
-                                Journey Date
+                                Journey date
                             </label>
 
                             <input
@@ -666,81 +709,128 @@ export default function ControlRoomPage() {
                                         event.target.value,
                                     )
                                 }
-                                className="w-full rounded-xl border bg-white px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+                                className="h-11 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+                            />
 
-                            <p className="mt-1 text-xs text-slate-500">
-                                Defaults to today. Change it only
-                                when monitoring another journey.
+                            <p className="mt-1.5 text-[11px] leading-4 text-slate-400">
+                                Date represents the journey start date.
                             </p>
                         </div>
-                        <input
-                            value={
-                                searchQuery
-                            }
-                            onChange={(
-                                event,
-                            ) =>
-                                searchTrains(
-                                    event.target
-                                        .value,
-                                )
-                            }
-                            placeholder="e.g. Dakshin Express or 12722"
-                            className="w-full rounded-xl border px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                        />
 
-                        {searchLoading && (
-                            <p className="mt-2 text-xs text-slate-500">
-                                Searching...
-                            </p>
-                        )}
+                        {/* Train search */}
+                        <div className="relative">
+                            <label
+                                htmlFor="control-train-search"
+                                className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500"
+                            >
+                                Train name or number
+                            </label>
 
-                        {searchResults.length
-                            > 0 && (
-                                <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-xl border bg-white shadow-xl">
+                            <div className="relative">
+                                <input
+                                    id="control-train-search"
+                                    value={searchQuery}
+                                    onChange={(event) =>
+                                        searchTrains(
+                                            event.target.value,
+                                        )
+                                    }
+                                    placeholder="Search train name or number"
+                                    className="h-11 w-full rounded-xl border border-slate-300 bg-white px-4 pr-28 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+                                />
+
+                                <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+                                    {searchLoading ? (
+                                        <span className="text-[11px] font-medium text-sky-700">
+                                            Searching...
+                                        </span>
+                                    ) : searchQuery.trim().length >= 2 ? (
+                                        <span className="text-[11px] text-slate-400">
+                                            Select below
+                                        </span>
+                                    ) : null}
+                                </div>
+                            </div>
+
+                            {searchResults.length > 0 && (
+                                <div className="absolute left-0 right-0 top-full z-40 mt-2 max-h-80 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl">
                                     {searchResults.map(
-                                        (train) => (
-                                            <button
-                                                key={
-                                                    train.train_number
-                                                }
-                                                type="button"
-                                                onClick={() =>
-                                                    addTrain(
-                                                        train,
-                                                    )
-                                                }
-                                                className="flex w-full items-start justify-between gap-4 border-b px-4 py-3 text-left last:border-b-0 hover:bg-slate-50"
-                                            >
-                                                <div>
-                                                    <p className="font-bold">
-                                                        {
-                                                            train.train_name
-                                                        }
-                                                    </p>
+                                        (train) => {
+                                            const alreadyMonitored =
+                                                monitoredTrains.some(
+                                                    (item) =>
+                                                        item.trainNumber ===
+                                                        train.train_number,
+                                                );
 
-                                                    <p className="mt-1 text-xs text-slate-500">
-                                                        {
-                                                            train.train_number
-                                                        }
-                                                    </p>
-                                                </div>
+                                            return (
+                                                <button
+                                                    key={train.train_number}
+                                                    type="button"
+                                                    onClick={() =>
+                                                        addTrain(train)
+                                                    }
+                                                    className="flex w-full items-start justify-between gap-4 border-b border-slate-100 px-4 py-3 text-left transition last:border-b-0 hover:bg-slate-50"
+                                                >
+                                                    <div className="min-w-0">
+                                                        <div className="flex flex-wrap items-center gap-2">
+                                                            <p className="truncate font-semibold text-slate-950">
+                                                                {train.train_name}
+                                                            </p>
 
-                                                <p className="text-xs text-slate-500">
-                                                    {train.source_code
-                                                        ?? ""}
-                                                    {" → "}
-                                                    {train.destination_code
-                                                        ?? ""}
-                                                </p>
-                                            </button>
-                                        ),
+                                                            {alreadyMonitored && (
+                                                                <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                                                                    Monitored
+                                                                </span>
+                                                            )}
+                                                        </div>
+
+                                                        <p className="mt-1 text-xs text-slate-500">
+                                                            {train.train_number}
+                                                        </p>
+                                                    </div>
+
+                                                    <div className="shrink-0 text-right">
+                                                        <p className="text-xs font-medium text-slate-500">
+                                                            {train.source_code ?? "—"}
+                                                            {" → "}
+                                                            {train.destination_code ?? "—"}
+                                                        </p>
+
+                                                        <p className="mt-1 text-[10px] text-slate-400">
+                                                            {alreadyMonitored
+                                                                ? "Already on board"
+                                                                : "Add to monitor"}
+                                                        </p>
+                                                    </div>
+                                                </button>
+                                            );
+                                        },
                                     )}
                                 </div>
                             )}
+                        </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 bg-slate-50/60 px-5 py-3 sm:px-6">
+                        <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-500">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                            Live forecast API
+                        </span>
+
+                        <span className="text-slate-300">•</span>
+
+                        <span className="text-[11px] text-slate-500">
+                            Duplicate trains are ignored
+                        </span>
+
+                        <span className="text-slate-300">•</span>
+
+                        <span className="text-[11px] text-slate-500">
+                            Refresh individually or all at once
+                        </span>
                     </div>
                 </section>
-
 
                 {/* Empty state */}
                 {monitoredTrains.length === 0 && (
@@ -758,321 +848,366 @@ export default function ControlRoomPage() {
 
 
                 {/* Monitored trains */}
-                {monitoredTrains.length > 0 && (
-                    <section className="mt-6 grid gap-5 xl:grid-cols-2">
-                        {monitoredTrains.map(
-                            (item) => {
-                                const result =
-                                    item.result;
+{monitoredTrains.length > 0 && (
+  <section className="mt-6 space-y-4">
 
-                                const nextPrediction =
-                                    result
-                                        ?.predictions
-                                    ?.[0]
-                                    ?? null;
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">
+          Live operations board
+        </p>
 
-                                const scheduled =
-                                    result?.journey
-                                        .state_source
-                                    ===
-                                    "SCHEDULED_NOT_STARTED";
+        <h2 className="mt-1 text-lg font-bold text-slate-950">
+          Monitored journeys
+        </h2>
 
-                                const completed =
-                                    result !== null
-                                    && result
-                                    !== undefined
-                                    && (
-                                        result.journey
-                                            .upcoming_stations
-                                        === 0
-                                        || result
-                                            .journey
-                                            .state_source
-                                        ===
-                                        "NORMALIZED_LIVE_JOURNEY_NO_UPCOMING_STATIONS"
-                                    );
+        <p className="mt-1 text-sm text-slate-500">
+          Current location, next ETA, delay risk and service alerts.
+        </p>
+      </div>
 
-                                const delay =
-                                    nextPrediction
-                                        ?.forecast
-                                        .predicted_delay_min
-                                    ?? result
-                                        ?.journey
-                                        .current_delay_min
-                                    ?? null;
+      <span className="w-fit rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-600">
+        {monitoredTrains.length} trains
+      </span>
+    </div>
 
-                                const confidence =
-                                    nextPrediction
-                                        ?.forecast
-                                        .confidence
-                                    ?? null;
+    <div className="grid gap-4 xl:grid-cols-2">
+      {monitoredTrains.map(
+        (item) => {
+          const result = item.result;
 
-                                return (
-                                    <article
-                                        key={
-                                            item.trainNumber
-                                        }
-                                        className="overflow-hidden rounded-3xl border bg-white shadow-sm"
-                                    >
-                                        {/* Card header */}
-                                        <div className="border-b p-5">
-                                            <div className="flex items-start justify-between gap-4">
-                                                <div>
-                                                    <div>
-                                                        <h3 className="text-lg font-black">
-                                                            {item.trainName}
-                                                        </h3>
+          const nextPrediction =
+            result?.predictions?.[0] ?? null;
 
-                                                        <p className="text-sm text-slate-500">
-                                                            {item.trainNumber}
-                                                        </p>
+          const scheduled =
+            result?.journey.state_source ===
+            "SCHEDULED_NOT_STARTED";
 
-                                                        {/* YAHAN ADD KARO */}
-                                                        <p className="mt-1 text-xs font-medium text-slate-500">
-                                                            Journey:{" "}
-                                                            {item.journeyDate
-                                                                === getTodayLocalDate()
-                                                                ? "Today"
-                                                                : item.journeyDate}
-                                                        </p>
-                                                    </div>
+          const completed =
+            result !== null &&
+            result !== undefined &&
+            (
+              result.journey.upcoming_stations === 0 ||
+              result.journey.state_source ===
+              "NORMALIZED_LIVE_JOURNEY_NO_UPCOMING_STATIONS"
+            );
 
-                                                    {result && (
-                                                        <p className="mt-2 text-xs text-slate-500">
-                                                            {completed
-                                                                ? "Completed journey"
-                                                                : scheduled
-                                                                    ? "Scheduled journey"
-                                                                    : "Live running journey"}
-                                                        </p>
-                                                    )}
-                                                </div>
+          const delay =
+            nextPrediction?.forecast.predicted_delay_min
+            ?? result?.journey.current_delay_min
+            ?? null;
 
-                                                <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                        removeTrain(
-                                                            item.trainNumber,
-                                                        )
-                                                    }
-                                                    className="rounded-lg border px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
-                                                >
-                                                    Remove
-                                                </button>
-                                            </div>
-                                        </div>
+          const confidence =
+            nextPrediction?.forecast.confidence
+            ?? null;
 
-                                        {item.loading && (
-                                            <div className="p-6">
-                                                <p className="text-sm text-slate-500">
-                                                    Loading live
-                                                    forecast...
-                                                </p>
-                                            </div>
-                                        )}
+          const positionSource =
+            result?.route?.current_position
+              ?.position_source
+            ?? null;
 
-                                        {item.error
-                                            && !item.loading && (
-                                                <div className="p-5">
-                                                    <div className="rounded-xl border border-red-200 bg-red-50 p-4">
-                                                        <p className="font-semibold text-red-800">
-                                                            Unable to
-                                                            load train
-                                                        </p>
+          return (
+            <article
+              key={item.trainNumber}
+              className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+            >
 
-                                                        <p className="mt-1 text-sm text-red-700">
-                                                            {
-                                                                item.error
-                                                            }
-                                                        </p>
+              {/* Header */}
+              <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="truncate text-lg font-bold text-slate-950">
+                      {item.trainName}
+                    </h3>
 
-                                                        <button
-                                                            type="button"
-                                                            onClick={() =>
-                                                                refreshTrain(
-                                                                    item.trainNumber,
-                                                                    item.journeyDate,
-                                                                )
-                                                            }
-                                                            className="mt-3 rounded-lg bg-red-700 px-3 py-2 text-xs font-semibold text-white"
-                                                        >
-                                                            Retry
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            )}
+                    {result && (
+                      <span
+                        className={[
+                          "rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase",
+                          completed
+                            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                            : scheduled
+                              ? "border-amber-200 bg-amber-50 text-amber-700"
+                              : "border-sky-200 bg-sky-50 text-sky-700",
+                        ].join(" ")}
+                      >
+                        {completed
+                          ? "Completed"
+                          : scheduled
+                            ? "Scheduled"
+                            : "Running"}
+                      </span>
+                    )}
+                  </div>
 
-                                        {result
-                                            && !item.loading && (
-                                                <div className="space-y-5 p-5">
+                  <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+                    <span>{item.trainNumber}</span>
 
-                                                    {/* Alerts */}
-                                                    {result.alerts
-                                                        ?.length > 0 && (
-                                                            <div className="space-y-2">
-                                                                {result.alerts.map(
-                                                                    (
-                                                                        alert,
-                                                                        index,
-                                                                    ) => (
-                                                                        <div
-                                                                            key={`${alert.type}-${index}`}
-                                                                            className={`rounded-xl border p-3 ${alert.severity
-                                                                                === "CRITICAL"
-                                                                                ? "border-red-200 bg-red-50 text-red-800"
-                                                                                : "border-yellow-200 bg-yellow-50 text-yellow-800"
-                                                                                }`}
-                                                                        >
-                                                                            <p className="text-xs font-bold uppercase tracking-wide">
-                                                                                {
-                                                                                    alert.title
-                                                                                }
-                                                                            </p>
+                    <span className="text-slate-300">
+                      •
+                    </span>
 
-                                                                            <p className="mt-1 text-sm">
-                                                                                {
-                                                                                    alert.message
-                                                                                }
-                                                                            </p>
-                                                                        </div>
-                                                                    ),
-                                                                )}
-                                                            </div>
-                                                        )}
+                    <span>
+                      Journey:{" "}
+                      {item.journeyDate === getTodayLocalDate()
+                        ? "Today"
+                        : item.journeyDate}
+                    </span>
+                  </div>
+                </div>
 
-                                                    {/* Main status */}
-                                                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                                                        <div className="rounded-xl bg-slate-50 p-3">
-                                                            <p className="text-xs uppercase text-slate-500">
-                                                                Current
-                                                            </p>
+                <button
+                  type="button"
+                  onClick={() =>
+                    removeTrain(
+                      item.trainNumber,
+                    )
+                  }
+                  className="shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+                >
+                  Remove
+                </button>
+              </div>
 
-                                                            <p className="mt-1 font-bold">
-                                                                {result
-                                                                    .journey
-                                                                    .current_station_name
-                                                                    ?? result
-                                                                        .journey
-                                                                        .current_station_code
-                                                                    ?? "Unavailable"}
-                                                            </p>
-                                                        </div>
+              {/* Loading */}
+              {item.loading && (
+                <div className="px-5 py-6">
+                  <div className="flex items-center gap-2 text-sm text-slate-500">
+                    <span className="h-2 w-2 animate-pulse rounded-full bg-sky-500" />
+                    Loading live forecast...
+                  </div>
+                </div>
+              )}
 
-                                                        <div className="rounded-xl bg-slate-50 p-3">
-                                                            <p className="text-xs uppercase text-slate-500">
-                                                                Next
-                                                            </p>
+              {/* Error */}
+              {item.error &&
+                !item.loading && (
+                  <div className="p-5">
+                    <div className="rounded-xl border border-rose-200 bg-rose-50 p-4">
+                      <p className="font-semibold text-rose-800">
+                        Unable to load train
+                      </p>
 
-                                                            <p className="mt-1 font-bold">
-                                                                {scheduled
-                                                                    ? "Not started"
-                                                                    : completed
-                                                                        ? "Journey complete"
-                                                                        : nextPrediction
-                                                                            ?.station
-                                                                            .name
-                                                                        ?? nextPrediction
-                                                                            ?.station
-                                                                            .code
-                                                                        ?? "Unavailable"}
-                                                            </p>
-                                                        </div>
+                      <p className="mt-1 text-sm leading-6 text-rose-700">
+                        {item.error}
+                      </p>
 
-                                                        <div className="rounded-xl bg-slate-50 p-3">
-                                                            <p className="text-xs uppercase text-slate-500">
-                                                                ETA
-                                                            </p>
-
-                                                            <p className="mt-1 font-bold">
-                                                                {nextPrediction
-                                                                    ?.forecast
-                                                                    .eta
-                                                                    ? formatTime(
-                                                                        nextPrediction
-                                                                            .forecast
-                                                                            .eta,
-                                                                    )
-                                                                    : "--"}
-                                                            </p>
-                                                        </div>
-
-                                                        <div className="rounded-xl bg-slate-50 p-3">
-                                                            <p className="text-xs uppercase text-slate-500">
-                                                                Delay
-                                                            </p>
-
-                                                            <span
-                                                                className={`mt-1 inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${delayClass(
-                                                                    delay,
-                                                                )}`}
-                                                            >
-                                                                {
-                                                                    delayLabel(
-                                                                        delay,
-                                                                    )
-                                                                }
-                                                            </span>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Confidence + source */}
-                                                    <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
-                                                        <div className="flex flex-wrap gap-2">
-                                                            <span
-                                                                className={`rounded-full px-3 py-1 text-xs font-semibold ${confidenceClass(
-                                                                    confidence,
-                                                                )}`}
-                                                            >
-                                                                {confidence
-                                                                    ? `${confidence} confidence`
-                                                                    : "Confidence unavailable"}
-                                                            </span>
-
-                                                            {result.route
-                                                                ?.current_position
-                                                                ?.position_source && (
-                                                                    <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-                                                                        {result.route
-                                                                            .current_position
-                                                                            .position_source
-                                                                            === "REAL_PROVIDER_GPS"
-                                                                            ? "Live GPS"
-                                                                            : result.route
-                                                                                .current_position
-                                                                                .position_source
-                                                                                === "CURRENT_STATION"
-                                                                                ? "Station position"
-                                                                                : result.route
-                                                                                    .current_position
-                                                                                    .position_source
-                                                                                    === "ESTIMATED_BETWEEN_STATIONS"
-                                                                                    ? "Estimated position"
-                                                                                    : "Position source available"}
-                                                                    </span>
-                                                                )}
-                                                        </div>
-
-                                                        <button
-                                                            type="button"
-                                                            onClick={() =>
-                                                                refreshTrain(
-                                                                    item.trainNumber,
-                                                                    item.journeyDate,
-                                                                )
-                                                            }
-                                                            className="rounded-lg border px-3 py-2 text-xs font-semibold transition hover:bg-slate-50"
-                                                        >
-                                                            Refresh
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            )}
-                                    </article>
-                                );
-                            },
-                        )}
-                    </section>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          refreshTrain(
+                            item.trainNumber,
+                            item.journeyDate,
+                          )
+                        }
+                        className="mt-3 rounded-lg bg-rose-700 px-3 py-2 text-xs font-semibold text-white transition hover:bg-rose-800"
+                      >
+                        Retry
+                      </button>
+                    </div>
+                  </div>
                 )}
+
+              {/* Loaded state */}
+              {result &&
+                !item.loading && (
+                  <div>
+
+                    {/* Alerts */}
+                    {result.alerts?.length > 0 && (
+                      <div className="space-y-2 border-b border-slate-100 px-5 py-4">
+                        {result.alerts.map(
+                          (
+                            alert,
+                            index,
+                          ) => {
+                            const critical =
+                              alert.severity ===
+                              "CRITICAL";
+
+                            return (
+                              <div
+                                key={`${alert.type}-${index}`}
+                                className={[
+                                  "rounded-xl border px-3 py-2.5",
+                                  critical
+                                    ? "border-rose-200 bg-rose-50"
+                                    : "border-amber-200 bg-amber-50",
+                                ].join(" ")}
+                              >
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  <p
+                                    className={[
+                                      "text-[10px] font-semibold uppercase tracking-[0.12em]",
+                                      critical
+                                        ? "text-rose-700"
+                                        : "text-amber-700",
+                                    ].join(" ")}
+                                  >
+                                    {alert.title}
+                                  </p>
+
+                                  <span
+                                    className={[
+                                      "rounded-full px-2 py-0.5 text-[9px] font-bold uppercase",
+                                      critical
+                                        ? "bg-rose-600 text-white"
+                                        : "bg-amber-500 text-white",
+                                    ].join(" ")}
+                                  >
+                                    {alert.severity}
+                                  </span>
+                                </div>
+
+                                <p className="mt-1 text-xs leading-5 text-slate-600">
+                                  {alert.message}
+                                </p>
+                              </div>
+                            );
+                          },
+                        )}
+                      </div>
+                    )}
+
+                    {/* Operational metrics */}
+                    <div className="grid gap-px border-b border-slate-100 bg-slate-100 sm:grid-cols-2 lg:grid-cols-4">
+                      <div className="bg-white p-4">
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                          Current
+                        </p>
+
+                        <p className="mt-1 text-sm font-semibold text-slate-900">
+                          {result.journey.current_station_name
+                            ?? result.journey.current_station_code
+                            ?? "Unavailable"}
+                        </p>
+                      </div>
+
+                      <div className="bg-white p-4">
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                          Next
+                        </p>
+
+                        <p className="mt-1 text-sm font-semibold text-slate-900">
+                          {scheduled
+                            ? "Not started"
+                            : completed
+                              ? "Journey complete"
+                              : nextPrediction?.station.name
+                                ?? nextPrediction?.station.code
+                                ?? "Unavailable"}
+                        </p>
+                      </div>
+
+                      <div className="bg-white p-4">
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                          ETA
+                        </p>
+
+                        <p className="mt-1 text-sm font-semibold text-sky-700">
+                          {nextPrediction?.forecast.eta
+                            ? formatTime(
+                                nextPrediction
+                                  .forecast.eta,
+                              )
+                            : "--"}
+                        </p>
+                      </div>
+
+                      <div className="bg-white p-4">
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                          Delay
+                        </p>
+
+                        <span
+                          className={`mt-1 inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${delayClass(
+                            delay,
+                          )}`}
+                        >
+                          {delayLabel(delay)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Footer metadata/actions */}
+                    <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+
+                      <div className="flex flex-wrap gap-2">
+                        <span
+                          className={[
+                            "rounded-full border px-2.5 py-1 text-[10px] font-semibold",
+                            confidence === "HIGH"
+                              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                              : confidence === "MEDIUM"
+                                ? "border-amber-200 bg-amber-50 text-amber-700"
+                                : "border-slate-200 bg-slate-50 text-slate-600",
+                          ].join(" ")}
+                        >
+                          {confidence
+                            ? `${confidence} confidence`
+                            : "Confidence unavailable"}
+                        </span>
+
+                        {positionSource && (
+                          <span
+                            className={[
+                              "rounded-full border px-2.5 py-1 text-[10px] font-semibold",
+                              positionSource === "REAL_PROVIDER_GPS"
+                                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                : positionSource === "CURRENT_STATION"
+                                  ? "border-sky-200 bg-sky-50 text-sky-700"
+                                  : positionSource === "ESTIMATED_BETWEEN_STATIONS"
+                                    ? "border-amber-200 bg-amber-50 text-amber-700"
+                                    : "border-slate-200 bg-slate-50 text-slate-600",
+                            ].join(" ")}
+                          >
+                            {positionSource ===
+                            "REAL_PROVIDER_GPS"
+                              ? "Live GPS"
+                              : positionSource ===
+                                  "CURRENT_STATION"
+                                ? "Station position"
+                                : positionSource ===
+                                    "ESTIMATED_BETWEEN_STATIONS"
+                                  ? "Estimated position"
+                                  : "Position source"}
+                          </span>
+                        )}
+
+                        {result.backend
+                          ?.provider_payload_cache && (
+                          <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-semibold text-slate-600">
+                            Cache:{" "}
+                            {
+                              result.backend
+                                .provider_payload_cache
+                            }
+                          </span>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          refreshTrain(
+                            item.trainNumber,
+                            item.journeyDate,
+                          )
+                        }
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                      >
+                        Refresh
+                      </button>
+                    </div>
+                  </div>
+                )}
+            </article>
+          );
+        },
+      )}
+    </div>
+  </section>
+)}
             </div>
         </main>
     );

@@ -3,6 +3,7 @@ from datetime import date, timedelta
 from app.clients.railradar import RailRadarClient
 from app.core.config import get_settings
 from app.core.errors import (
+    TrainNotScheduledError,
     PredictionError,
     RailETAError,
 )
@@ -518,17 +519,78 @@ class LiveForecastService:
                 authoritative=False,
             )
 
-            # if not normalized_date:
-            #     api_result = (
-            #         _resolve_latest_valid_journey(
-            #             client=client,
-            #             train_number=
-            #                 normalized_train_number,
-            #             initial_result=
-            #                 api_result,
-            #             max_lookback_days=7,
-            #         )
-            #     )
+            if normalized_date:
+                provider_data = (
+                    api_result.get("data", {})
+                    if isinstance(api_result, dict)
+                    else {}
+                )
+
+                train_data = (
+                    provider_data.get("train", {})
+                    if isinstance(provider_data, dict)
+                    else {}
+                )
+
+                run_days = (
+                    train_data.get("runDays", [])
+                    if isinstance(train_data, dict)
+                    else []
+                )
+
+                normalized_run_days = {
+                    str(day).strip().lower()[:3]
+                    for day in run_days
+                    if str(day).strip()
+                }
+
+                if normalized_run_days:
+                    try:
+                        requested_date = (
+                            date.fromisoformat(
+                                normalized_date
+                            )
+                        )
+                    except ValueError:
+                        requested_date = None
+
+                    if requested_date is not None:
+                        weekday_codes = (
+                            "mon",
+                            "tue",
+                            "wed",
+                            "thu",
+                            "fri",
+                            "sat",
+                            "sun",
+                        )
+
+                        requested_day = (
+                            weekday_codes[
+                                requested_date.weekday()
+                            ]
+                        )
+
+                        if (
+                            requested_day
+                            not in normalized_run_days
+                        ):
+                            raise TrainNotScheduledError(
+                                "This train is not scheduled "
+                                "to operate on the selected date.",
+                                details={
+                                    "train_number":
+                                        normalized_train_number,
+                                    "journey_date":
+                                        normalized_date,
+                                    "requested_day":
+                                        requested_day,
+                                    "run_days":
+                                        sorted(
+                                            normalized_run_days
+                                        ),
+                                },
+                            )
 
             _live_payload_cache.set(
                 cache_key,
@@ -771,3 +833,4 @@ class LiveForecastService:
                         type(exc).__name__,
                 },
             ) from exc
+

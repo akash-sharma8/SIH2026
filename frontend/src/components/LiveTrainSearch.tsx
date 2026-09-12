@@ -146,6 +146,22 @@ export default function LiveTrainSearch() {
         null,
     );
 
+    const [
+        errorCode,
+        setErrorCode,
+    ] = useState<string | null>(null);
+
+
+    const [
+        errorDetails,
+        setErrorDetails,
+    ] = useState<{
+        train_number?: string;
+        journey_date?: string;
+        requested_day?: string;
+        run_days?: string[];
+    } | null>(null);
+
 
 
     function delayBadgeClass(
@@ -275,6 +291,44 @@ export default function LiveTrainSearch() {
         }
     }
 
+    function formatRunDay(day: string) {
+        const normalized = day.trim().toLowerCase();
+
+        const dayMap: Record<string, string> = {
+            mon: "Monday",
+            tue: "Tuesday",
+            wed: "Wednesday",
+            thu: "Thursday",
+            fri: "Friday",
+            sat: "Saturday",
+            sun: "Sunday",
+        };
+
+        return dayMap[normalized] ?? day;
+    }
+
+    function formatJourneyDate(
+        value: string | null | undefined,
+    ) {
+        if (!value) {
+            return null;
+        }
+
+        const date = new Date(value);
+
+        if (Number.isNaN(date.getTime())) {
+            return value;
+        }
+
+        return date.toLocaleDateString(
+            "en-IN",
+            {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+            },
+        );
+    }
 
     async function handleSubmit(
         event: FormEvent<HTMLFormElement>,
@@ -284,6 +338,8 @@ export default function LiveTrainSearch() {
         try {
             setLoading(true);
             setError(null);
+            setErrorCode(null);
+            setErrorDetails(null);
             setRequestId(null);
             setResult(null);
             setRetryable(false);
@@ -317,11 +373,25 @@ export default function LiveTrainSearch() {
                             error: {
                                 code: string;
                                 retryable: boolean;
+                                details?: {
+                                    train_number?: string;
+                                    journey_date?: string;
+                                    requested_day?: string;
+                                    run_days?: string[];
+                                } | null;
                             };
                         };
 
                     setRetryable(
                         applicationError.error.retryable,
+                    );
+
+                    setErrorCode(
+                        applicationError.error.code,
+                    );
+
+                    setErrorDetails(
+                        applicationError.error.details ?? null,
                     );
 
                     if (
@@ -385,7 +455,16 @@ export default function LiveTrainSearch() {
         result.predictions.length - 1
         ] ?? null;
 
+    const timelineStations =
+        result?.journey.timeline?.stations ?? [];
 
+    const fallbackSource =
+        timelineStations[0] ?? null;
+
+    const fallbackDestination =
+        timelineStations.length > 0
+            ? timelineStations[timelineStations.length - 1]
+            : null;
     const highestWeatherRisk =
         result?.eta_weather_corridor.reduce(
             (highest, item) => {
@@ -479,232 +558,309 @@ export default function LiveTrainSearch() {
 
             <form
                 onSubmit={handleSubmit}
-                className="space-y-5 rounded-2xl border bg-white p-5 shadow-sm sm:p-6"
+                className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
             >
-                <div className="relative">
-                    <label
-                        htmlFor="train-search"
-                        className="mb-1 block font-medium"
-                    >
-                        Train Name or Number
-                    </label>
+                <div className="grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(220px,0.8fr)_auto] lg:items-end">
 
-                    <input
-                        id="train-search"
-                        value={searchQuery}
-                        onChange={(event) => {
-                            const value =
-                                event.target.value;
+                    {/* Train search */}
+                    <div className="relative">
+                        <label
+                            htmlFor="train-search"
+                            className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500"
+                        >
+                            Train Name or Number
+                        </label>
 
-                            setSearchQuery(value);
+                        <input
+                            id="train-search"
+                            value={searchQuery}
+                            onChange={(event) => {
+                                const value =
+                                    event.target.value;
 
-                            if (
-                                /^\d+$/.test(
-                                    value.trim(),
-                                )
-                            ) {
-                                setTrainNumber(
-                                    value.trim(),
-                                );
-                            } else {
-                                setTrainNumber("");
-                            }
-                        }}
-                        placeholder="12722 or Dakshin SF Express"
-                        autoComplete="off"
-                        required
-                        className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                    />
+                                setSearchQuery(value);
 
-                    {trainSearchLoading && (
-                        <p className="mt-1 text-xs text-gray-500">
-                            Searching trains...
-                        </p>
-                    )}
+                                if (
+                                    /^\d+$/.test(
+                                        value.trim(),
+                                    )
+                                ) {
+                                    setTrainNumber(
+                                        value.trim(),
+                                    );
+                                } else {
+                                    setTrainNumber("");
+                                }
+                            }}
+                            placeholder="12722 or Dakshin SF Express"
+                            autoComplete="off"
+                            required
+                            className="h-11 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+                        />
 
-                    {trainSearchResults.length > 0 && (
-                        <div className="absolute z-50 mt-2 max-h-80 w-full overflow-y-auto rounded-xl border bg-white shadow-xl">
-                            {trainSearchResults.map(
-                                (train) => (
-                                    <button
-                                        key={
-                                            train.train_number
-                                        }
-                                        type="button"
-                                        onClick={() => {
-                                            setTrainNumber(
-                                                train.train_number,
-                                            );
+                        {trainSearchLoading && (
+                            <p className="mt-1.5 text-xs text-slate-500">
+                                Searching trains...
+                            </p>
+                        )}
 
-                                            setSearchQuery(
-                                                `${train.train_number} — ${train.train_name}`,
-                                            );
+                        {trainSearchResults.length > 0 && (
+                            <div className="absolute z-50 mt-2 max-h-80 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl">
+                                {trainSearchResults.map(
+                                    (train) => (
+                                        <button
+                                            key={
+                                                train.train_number
+                                            }
+                                            type="button"
+                                            onClick={() => {
+                                                setTrainNumber(
+                                                    train.train_number,
+                                                );
 
-                                            setTrainSearchResults(
-                                                [],
-                                            );
-                                        }}
-                                        className="flex w-full flex-col border-b px-4 py-3 text-left transition last:border-b-0 hover:bg-gray-50"
-                                    >
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            <span className="font-bold text-gray-900">
-                                                {train.train_number}
-                                            </span>
+                                                setSearchQuery(
+                                                    `${train.train_number} — ${train.train_name}`,
+                                                );
 
-                                            <span className="font-medium text-gray-800">
-                                                {train.train_name}
-                                            </span>
-
-                                            {train.train_type && (
-                                                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-600">
-                                                    {train.train_type}
+                                                setTrainSearchResults(
+                                                    [],
+                                                );
+                                            }}
+                                            className="flex w-full flex-col border-b border-slate-100 px-4 py-3 text-left transition last:border-b-0 hover:bg-slate-50"
+                                        >
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <span className="font-bold text-slate-950">
+                                                    {train.train_number}
                                                 </span>
-                                            )}
-                                        </div>
 
-                                        <p className="mt-1 text-xs text-gray-500">
-                                            {train.source_name
-                                                ?? train.source_code
-                                                ?? "Unknown"}
-                                            {" → "}
-                                            {train.destination_name
-                                                ?? train.destination_code
-                                                ?? "Unknown"}
-                                        </p>
-                                    </button>
-                                ),
-                            )}
-                        </div>
-                    )}
+                                                <span className="font-medium text-slate-800">
+                                                    {train.train_name}
+                                                </span>
 
-                    <p className="mt-1 text-xs text-gray-500">
-                        Search using train name or train number.
-                    </p>
-                </div>
+                                                {train.train_type && (
+                                                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                                                        {train.train_type}
+                                                    </span>
+                                                )}
+                                            </div>
 
-                <div>
-                    <label
-                        htmlFor="journey-date"
-                        className="mb-1 block font-medium"
-                    >
-                        Journey Date
-                    </label>
+                                            <p className="mt-1 text-xs text-slate-500">
+                                                {train.source_name
+                                                    ?? train.source_code
+                                                    ?? "Unknown"}
+                                                {" → "}
+                                                {train.destination_name
+                                                    ?? train.destination_code
+                                                    ?? "Unknown"}
+                                            </p>
+                                        </button>
+                                    ),
+                                )}
+                            </div>
+                        )}
+                    </div>
 
-                    <input
-                        id="journey-date"
-                        type="date"
-                        value={journeyDate}
-                        onChange={(event) =>
-                            setJourneyDate(
-                                event.target.value,
-                            )
+                    {/* Journey date */}
+                    <div>
+                        <label
+                            htmlFor="journey-date"
+                            className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500"
+                        >
+                            Journey Date
+                        </label>
+
+                        <input
+                            id="journey-date"
+                            type="date"
+                            value={journeyDate}
+                            onChange={(event) =>
+                                setJourneyDate(
+                                    event.target.value,
+                                )
+                            }
+                            className="h-11 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+                        />
+                    </div>
+
+                    {/* Submit */}
+                    <button
+                        type="submit"
+                        disabled={
+                            loading
+                            || !trainNumber.trim()
                         }
-                        className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                    />
+                        className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#0876c9] px-5 text-sm font-semibold text-white transition hover:bg-[#0667af] disabled:cursor-not-allowed disabled:opacity-50 lg:w-auto"
+                    >
+                        {loading
+                            ? "Fetching Live ETA..."
+                            : "Predict Live ETA"}
 
-                    <p className="mt-1 text-xs text-gray-500">
-                        Optional
-                    </p>
+                        {!loading && (
+                            <span aria-hidden="true">
+                                →
+                            </span>
+                        )}
+                    </button>
                 </div>
 
+                {/* Secondary row */}
+                <div className="mt-4 flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
 
-                <button
-                    type="submit"
-                    disabled={
-                        loading
-                        || !trainNumber.trim()
-                    }
-                    className="w-full rounded-xl bg-gray-900 px-5 py-3 font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
-                >
-                    {loading
-                        ? "Fetching Live ETA..."
-                        : "Predict Live ETA"}
-                </button>
+                    <div className="flex items-center gap-2 text-xs text-sky-700">
+                        <span className="text-sm">
+                            ⌕
+                        </span>
+
+                        <span className="font-medium">
+                            Search by train name or number
+                        </span>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-[11px] font-medium text-sky-700">
+                            <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
+                            Live data
+                        </span>
+
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600">
+                            Auto refresh: 60 sec
+                        </span>
+
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                            Prediction engine online
+                        </span>
+                    </div>
+                </div>
+
                 {loading && (
-                    <p className="text-xs text-gray-500">
+                    <p className="mt-3 text-xs text-slate-500">
                         Fetching live train state and generating leakage-safe ETA predictions...
                     </p>
                 )}
             </form>
-
-
             {error && (
-                <div className="rounded-2xl border border-red-200 bg-red-50 p-5 shadow-sm">
-                    {error
-                        .toLowerCase()
-                        .includes("rate limit") ||
-                        error
-                            .toLowerCase()
-                            .includes("quota") ? (
-                        <>
-                            <p className="text-lg font-semibold text-red-900">
-                                Live train data is temporarily unavailable
-                            </p>
+                errorCode === "TRAIN_NOT_SCHEDULED" ? (
+                    <div className="relative overflow-hidden rounded-3xl border border-blue-200 bg-gradient-to-br from-blue-50 via-sky-50 to-white p-5 shadow-sm sm:p-6">
+                        <div className="absolute inset-y-0 left-0 w-1.5 bg-blue-600" />
 
-                            <p className="mt-2 text-sm leading-6 text-red-800">
-                                We&apos;re receiving too many live-data requests right now.
-                                Please wait a moment and try again.
-                            </p>
-                        </>
-                    ) : (
-                        <>
-                            <p className="font-semibold text-red-900">
-                                Unable to generate forecast
-                            </p>
+                        <div className="relative flex items-start justify-between gap-4">
+                            <div className="flex flex-1 gap-4">
+                                <div className="mt-1 flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white shadow-sm">
+                                    <svg
+                                        viewBox="0 0 24 24"
+                                        className="h-6 w-6"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                    >
+                                        <rect x="6" y="4" width="12" height="12" rx="2" />
+                                        <path d="M8 18h8" />
+                                        <path d="M9 20h1" />
+                                        <path d="M14 20h1" />
+                                        <path d="M9 8h6" />
+                                    </svg>
+                                </div>
 
-                            <p className="mt-1 text-sm text-red-800">
-                                {error}
-                            </p>
-                        </>
-                    )}
+                                <div className="flex-1">
+                                    <h3 className="text-xl font-bold text-slate-900">
+                                        Train doesn&apos;t run on{" "}
+                                        {formatJourneyDate(
+                                            errorDetails?.journey_date,
+                                        ) ?? "the selected date"}
+                                    </h3>
 
-                    {requestId && (
-                        <p className="mt-2 text-xs text-gray-500">
-                            Request ID: {requestId}
-                        </p>
-                    )}
+                                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                                        Train{" "}
+                                        <span className="font-semibold text-slate-900">
+                                            {errorDetails?.train_number ?? trainNumber}
+                                        </span>{" "}
+                                        does not operate on the selected journey date.
+                                    </p>
 
-                    <div className="mt-4 flex flex-wrap gap-3">
+                                    {errorDetails?.run_days &&
+                                        errorDetails.run_days.length > 0 && (
+                                            <div className="mt-4 rounded-2xl border border-blue-100 bg-white/80 p-4">
+                                                <p className="text-sm font-semibold text-slate-800">
+                                                    This train normally runs on:
+                                                </p>
 
-                        {retryable && (
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    const form =
-                                        document.querySelector(
-                                            "form",
-                                        );
+                                                <div className="mt-3 flex flex-wrap gap-2">
+                                                    {errorDetails.run_days.map((day) => (
+                                                        <span
+                                                            key={day}
+                                                            className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700"
+                                                        >
+                                                            {formatRunDay(day)}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
 
-                                    if (
-                                        form instanceof
-                                        HTMLFormElement
-                                    ) {
-                                        form.requestSubmit();
-                                    }
-                                }}
-                                disabled={loading}
-                                className="rounded-xl border border-red-300 bg-white px-4 py-2 font-medium text-red-900 transition hover:bg-red-100"
-                            >
-                                Retry
-                            </button>
+                                    <p className="mt-4 text-sm text-slate-600">
+                                        Please choose another journey date.
+                                    </p>
 
-                        )}
+                                    {requestId && (
+                                        <p className="mt-3 text-xs text-slate-400">
+                                            Request ID: {requestId}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
 
-                        {showDemoOption && (
-                            <button
-                                type="button"
-                                onClick={runVerifiedDemo}
-                                disabled={demoLoading}
-                                className="rounded-lg bg-black px-4 py-2 text-white disabled:opacity-50"
-                            >
-                                {demoLoading
-                                    ? "Loading Demo..."
-                                    : "Run Verified Demo"}
-                            </button>
-                        )}
-
+                            <div className="hidden shrink-0 sm:block">
+                                <svg
+                                    viewBox="0 0 120 120"
+                                    className="h-24 w-24 text-blue-200"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                >
+                                    <rect x="38" y="20" width="44" height="50" rx="10" />
+                                    <path d="M48 38h24" />
+                                    <circle cx="50" cy="77" r="3" fill="currentColor" />
+                                    <circle cx="70" cy="77" r="3" fill="currentColor" />
+                                    <path d="M60 70v18" />
+                                    <path d="M42 96l18-18 18 18" />
+                                </svg>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                ) : (
+                    <div className="rounded-2xl border border-red-200 bg-red-50 p-5 shadow-sm">
+                        {error.toLowerCase().includes("rate limit") ||
+                            error.toLowerCase().includes("quota") ? (
+                            <>
+                                <p className="text-lg font-semibold text-red-900">
+                                    Live train data is temporarily unavailable
+                                </p>
+
+                                <p className="mt-2 text-sm leading-6 text-red-800">
+                                    We&apos;re receiving too many live-data requests right now.
+                                    Please wait a moment and try again.
+                                </p>
+                            </>
+                        ) : (
+                            <>
+                                <p className="font-semibold text-red-900">
+                                    Unable to generate forecast
+                                </p>
+
+                                <p className="mt-1 text-sm text-red-800">
+                                    {error}
+                                </p>
+                            </>
+                        )}
+
+                        {requestId && (
+                            <p className="mt-2 text-xs text-gray-500">
+                                Request ID: {requestId}
+                            </p>
+                        )}
+                    </div>
+                )
             )}
 
 
@@ -719,8 +875,100 @@ export default function LiveTrainSearch() {
 
                     <div className="space-y-4">
                         {/* Passenger ETA Hero */}
-                        <div className="rounded-2xl border bg-white p-5 shadow-sm sm:p-6">
-                            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+
+                            <div className="border-b border-slate-100 px-5 py-5 sm:px-6">
+                                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+
+                                    <div>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <h3 className="text-xl font-bold tracking-tight text-slate-950 sm:text-2xl">
+                                                {result.journey.train_name ?? "Train"}
+                                            </h3>
+
+                                            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                                                {result.journey.train_number}
+                                            </span>
+                                        </div>
+
+                                        <p className="mt-2 text-sm text-slate-500">
+                                            {result.journey.source?.station_name
+                                                ?? result.journey.source?.station_code
+                                                ?? fallbackSource?.station_name
+                                                ?? fallbackSource?.station_code
+                                                ?? "Origin"}
+                                            {" → "}
+                                            {result.journey.destination?.station_name
+                                                ?? result.journey.destination?.station_code
+                                                ?? fallbackDestination?.station_name
+                                                ?? fallbackDestination?.station_code
+                                                ?? "Destination"}
+                                        </p>
+
+                                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                                            <span
+                                                className={[
+                                                    "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide",
+                                                    isCompletedJourney
+                                                        ? "border-slate-200 bg-slate-100 text-slate-700"
+                                                        : isScheduledNotStarted
+                                                            ? "border-amber-200 bg-amber-50 text-amber-700"
+                                                            : "border-emerald-200 bg-emerald-50 text-emerald-700",
+                                                ].join(" ")}
+                                            >
+                                                <span
+                                                    className={[
+                                                        "h-1.5 w-1.5 rounded-full",
+                                                        isCompletedJourney
+                                                            ? "bg-slate-500"
+                                                            : isScheduledNotStarted
+                                                                ? "bg-amber-500"
+                                                                : "bg-emerald-500",
+                                                    ].join(" ")}
+                                                />
+
+                                                {isCompletedJourney
+                                                    ? "Completed"
+                                                    : isScheduledNotStarted
+                                                        ? "Scheduled"
+                                                        : "Running"}
+                                            </span>
+
+                                            {!isScheduledNotStarted &&
+                                                result.journey.current_delay_min != null && (
+                                                    <span
+                                                        className={[
+                                                            "rounded-full border px-2.5 py-1 text-[11px] font-semibold",
+                                                            result.journey.current_delay_min > 0
+                                                                ? "border-rose-200 bg-rose-50 text-rose-700"
+                                                                : result.journey.current_delay_min < 0
+                                                                    ? "border-sky-200 bg-sky-50 text-sky-700"
+                                                                    : "border-emerald-200 bg-emerald-50 text-emerald-700",
+                                                        ].join(" ")}
+                                                    >
+                                                        {result.journey.current_delay_min > 0
+                                                            ? `+${Math.round(result.journey.current_delay_min)} min late`
+                                                            : result.journey.current_delay_min < 0
+                                                                ? `${Math.abs(
+                                                                    Math.round(result.journey.current_delay_min),
+                                                                )} min early`
+                                                                : "On time"}
+                                                    </span>
+                                                )}
+                                        </div>
+                                    </div>
+
+                                    {!isScheduledNotStarted &&
+                                        !isCompletedJourney && (
+                                            <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
+                                                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                                                Live journey
+                                            </div>
+                                        )}
+                                </div>
+                            </div>
+
+                            <div className="p-5 sm:p-6">
                                 <div>
                                     <div className="flex flex-wrap items-center gap-2">
                                         <h3 className="text-2xl font-bold text-gray-900">
@@ -755,340 +1003,503 @@ export default function LiveTrainSearch() {
 
                             {/* Scheduled Journey */}
                             {isScheduledNotStarted ? (
-                                <div className="mt-6 grid gap-4 md:grid-cols-3">
-                                    <div>
-                                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                            Starts From
+                                <div className="grid gap-3 md:grid-cols-3">
+
+                                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                                            Starts from
                                         </p>
 
-                                        <p className="mt-2 text-xl font-bold text-gray-900">
-                                            {result.journey.source
-                                                ?.station_name
-                                                ?? result.journey.source
-                                                    ?.station_code
+                                        <p className="mt-2 text-lg font-bold text-slate-950">
+                                            {result.journey.source?.station_name
+                                                ?? result.journey.source?.station_code
                                                 ?? "Unavailable"}
                                         </p>
 
-                                        {result.journey.source
-                                            ?.station_code && (
-                                                <p className="mt-1 text-sm text-gray-500">
-                                                    {
-                                                        result.journey
-                                                            .source
-                                                            .station_code
-                                                    }
-                                                </p>
-                                            )}
+                                        {result.journey.source?.station_code && (
+                                            <p className="mt-1 text-xs text-slate-500">
+                                                {result.journey.source.station_code}
+                                            </p>
+                                        )}
                                     </div>
 
-                                    <div>
-                                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                            Scheduled Departure
+                                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                                            Scheduled departure
                                         </p>
 
-                                        <p className="mt-2 text-xl font-bold text-gray-900">
+                                        <p className="mt-2 text-lg font-bold text-slate-950">
                                             {formatDateTime(
-                                                result.journey
-                                                    .source
-                                                    ?.scheduled_departure,
+                                                result.journey.source?.scheduled_departure,
                                             )}
                                         </p>
                                     </div>
 
-                                    <div>
-                                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                            Stations Ahead
+                                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                                            Stations ahead
                                         </p>
 
-                                        <p className="mt-2 text-2xl font-bold text-gray-900">
-                                            {
-                                                result.journey
-                                                    .upcoming_stations
-                                            }
+                                        <p className="mt-2 text-2xl font-bold text-slate-950">
+                                            {result.journey.upcoming_stations}
                                         </p>
                                     </div>
+
                                 </div>
                             ) : isCompletedJourney ? (
-                                /* Completed Journey */
-                                <div className="mt-6 grid gap-4 md:grid-cols-3">
-                                    <div>
-                                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                            Final Station
+                                <div className="grid gap-3 md:grid-cols-3">
+
+                                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                                            Final station
                                         </p>
 
-                                        <p className="mt-2 text-xl font-bold text-gray-900">
-                                            {result.journey
-                                                .current_station_name
-                                                ?? result.journey
-                                                    .current_station_code
+                                        <p className="mt-2 text-lg font-bold text-slate-950">
+                                            {result.journey.current_station_name
+                                                ?? result.journey.current_station_code
                                                 ?? "Unavailable"}
                                         </p>
 
-                                        {result.journey
-                                            .current_station_code && (
-                                                <p className="mt-1 text-sm text-gray-500">
-                                                    {
-                                                        result.journey
-                                                            .current_station_code
-                                                    }
-                                                </p>
-                                            )}
+                                        {result.journey.current_station_code && (
+                                            <p className="mt-1 text-xs text-slate-500">
+                                                {result.journey.current_station_code}
+                                            </p>
+                                        )}
                                     </div>
 
-                                    <div>
-                                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                            Final Delay
+                                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                                            Final delay
                                         </p>
 
-                                        <p className="mt-2 text-xl font-bold text-gray-900">
-                                            {result.journey
-                                                .current_delay_min == null
+                                        <p
+                                            className={[
+                                                "mt-2 text-lg font-bold",
+                                                result.journey.current_delay_min != null &&
+                                                    result.journey.current_delay_min > 0
+                                                    ? "text-rose-700"
+                                                    : "text-emerald-700",
+                                            ].join(" ")}
+                                        >
+                                            {result.journey.current_delay_min == null
                                                 ? "Unavailable"
-                                                : result.journey
-                                                    .current_delay_min < 0
+                                                : result.journey.current_delay_min < 0
                                                     ? `${Math.abs(
-                                                        result.journey
-                                                            .current_delay_min,
+                                                        result.journey.current_delay_min,
                                                     )} min early`
-                                                    : result.journey
-                                                        .current_delay_min === 0
+                                                    : result.journey.current_delay_min === 0
                                                         ? "On time"
                                                         : `${result.journey.current_delay_min} min late`}
                                         </p>
                                     </div>
 
-                                    <div>
-                                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                            Stations Completed
+                                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                                            Stations completed
                                         </p>
 
-                                        <p className="mt-2 text-2xl font-bold text-gray-900">
-                                            {result.journey.timeline
-                                                ?.stations.length
-                                                ?? result.journey
-                                                    .observed_stations}
+                                        <p className="mt-2 text-2xl font-bold text-slate-950">
+                                            {result.journey.timeline?.stations.length
+                                                ?? result.journey.observed_stations}
                                         </p>
                                     </div>
+
                                 </div>
                             ) : (
                                 /* Running Journey */
-                                <div className="mt-6 grid gap-5 lg:grid-cols-[1fr_auto_1fr_1.2fr] lg:items-center">
-                                    <div>
-                                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                            Current Station
-                                        </p>
+                                <div className="grid gap-4 lg:grid-cols-[0.9fr_1.6fr]">
 
-                                        <p className="mt-2 text-xl font-bold text-gray-900 sm:text-2xl">
-                                            {result.journey
-                                                .current_station_name
-                                                ?? result.journey
-                                                    .current_station_code
-                                                ?? "Unavailable"}
-                                        </p>
-
-                                        <p className="mt-1 text-sm text-gray-500">
-                                            {result.journey
-                                                .current_station_code
-                                                ?? ""}
-                                        </p>
-
-                                        <p className="mt-2 text-sm text-gray-600">
-                                            Current delay:{" "}
-                                            <span className="font-semibold text-gray-900">
-                                                {result.journey
-                                                    .current_delay_min == null
-                                                    ? "Unavailable"
-                                                    : result.journey
-                                                        .current_delay_min < 0
-                                                        ? `${Math.abs(
-                                                            result.journey
-                                                                .current_delay_min,
-                                                        )} min early`
-                                                        : result.journey
-                                                            .current_delay_min === 0
-                                                            ? "On time"
-                                                            : `${result.journey.current_delay_min} min late`}
-                                            </span>
-                                        </p>
-                                    </div>
-
-                                    <div className="hidden text-3xl text-gray-300 lg:block">
-                                        →
-                                    </div>
-
-                                    <div>
-                                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                            Next Station
-                                        </p>
-
-                                        <p className="mt-2 text-xl font-bold text-gray-900 sm:text-2xl">
-                                            {nextPrediction
-                                                ? (
-                                                    nextPrediction
-                                                        .station.name
-                                                    ?? nextPrediction
-                                                        .station.code
-                                                )
-                                                : isWaitingForObservations
-                                                    ? "Waiting for Live Data"
-                                                    : "Unavailable"}
-                                        </p>
-
-                                        {nextPrediction
-                                            ?.station.code && (
-                                                <p className="mt-1 text-sm text-gray-500">
-                                                    {
-                                                        nextPrediction
-                                                            .station.code
-                                                    }
-                                                </p>
-                                            )}
-                                    </div>
-
-                                    <div className="rounded-2xl bg-gray-900 p-5 text-white">
-                                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-300">
-                                            Predicted Arrival
-                                        </p>
-
-                                        <p className="mt-2 text-3xl font-bold">
-                                            {nextPrediction?.forecast.eta
-                                                ? new Date(
-                                                    nextPrediction.forecast.eta,
-                                                ).toLocaleTimeString(
-                                                    "en-IN",
-                                                    {
-                                                        hour: "2-digit",
-                                                        minute: "2-digit",
-                                                        hour12: true,
-                                                    },
-                                                )
-                                                : "--"}
-                                        </p>
-
-                                        {nextPrediction && (
-                                            <>
-                                                <div className="mt-3">
-                                                    <span className="rounded-full bg-white/10 px-3 py-1 text-xs">
-                                                        {nextPrediction.forecast
-                                                            .predicted_delay_min >= 0
-                                                            ? `${nextPrediction.forecast.predicted_delay_min.toFixed(1)} min late`
-                                                            : `${Math.abs(
-                                                                nextPrediction.forecast
-                                                                    .predicted_delay_min,
-                                                            ).toFixed(1)} min early`}
-                                                    </span>
-                                                </div>
-
-                                                <div className="mt-4 grid gap-2 text-xs sm:grid-cols-2">
-                                                    <div className="rounded-xl bg-white/10 px-3 py-2">
-                                                        <p className="text-gray-300">
-                                                            Confidence
-                                                        </p>
-
-                                                        <p className="mt-1 font-semibold text-white">
-                                                            {
-                                                                nextPrediction.forecast
-                                                                    .confidence
-                                                            }
-                                                        </p>
-                                                    </div>
-
-                                                    <div className="rounded-xl bg-white/10 px-3 py-2">
-                                                        <p className="text-gray-300">
-                                                            Position
-                                                        </p>
-
-                                                        <p className="mt-1 font-semibold text-white">
-                                                            {livePositionSource
-                                                                === "REAL_PROVIDER_GPS"
-                                                                ? "Live GPS"
-                                                                : livePositionSource
-                                                                    === "CURRENT_STATION"
-                                                                    ? "Station position"
-                                                                    : livePositionSource
-                                                                        === "ESTIMATED_BETWEEN_STATIONS"
-                                                                        ? "Estimated"
-                                                                        : "Unavailable"}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-                            {/* Passenger-friendly ETA explanation */}
-                            {nextPrediction
-                                && result.diagnostics
-                                    ?.prediction_explanation
-                                    ?.explanation_available && (
-                                    <div className="rounded-2xl border bg-white p-5 shadow-sm">
-                                        <div>
-                                            <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
-                                                RailETA Insight
+                                    {/* Current journey state */}
+                                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                                                Current journey
                                             </p>
 
-                                            <h3 className="mt-1 text-lg font-bold text-gray-900">
-                                                Why this ETA?
-                                            </h3>
+                                            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+                                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                                                Live
+                                            </span>
+                                        </div>
 
-                                            <p className="mt-1 text-sm text-gray-600">
-                                                Main factors associated with the
-                                                current arrival forecast.
+                                        <div className="mt-5">
+                                            <p className="text-xs font-medium text-slate-500">
+                                                Current station
+                                            </p>
+
+                                            <h4 className="mt-1 text-xl font-bold tracking-tight text-slate-950">
+                                                {result.journey.current_station_name
+                                                    ?? result.journey.current_station_code
+                                                    ?? "Unavailable"}
+                                            </h4>
+
+                                            {result.journey.current_station_code && (
+                                                <p className="mt-1 text-sm text-slate-500">
+                                                    {result.journey.current_station_code}
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        <div className="mt-5 border-t border-slate-200 pt-4">
+                                            <p className="text-xs text-slate-500">
+                                                Current delay
+                                            </p>
+
+                                            <p
+                                                className={[
+                                                    "mt-1 text-lg font-bold",
+                                                    result.journey.current_delay_min == null
+                                                        ? "text-slate-700"
+                                                        : result.journey.current_delay_min > 0
+                                                            ? "text-rose-700"
+                                                            : result.journey.current_delay_min < 0
+                                                                ? "text-sky-700"
+                                                                : "text-emerald-700",
+                                                ].join(" ")}
+                                            >
+                                                {result.journey.current_delay_min == null
+                                                    ? "Unavailable"
+                                                    : result.journey.current_delay_min < 0
+                                                        ? `${Math.abs(
+                                                            result.journey.current_delay_min,
+                                                        )} min early`
+                                                        : result.journey.current_delay_min === 0
+                                                            ? "On time"
+                                                            : `+${result.journey.current_delay_min} min late`}
                                             </p>
                                         </div>
 
-                                        <div className="mt-4 grid gap-3 md:grid-cols-3">
+                                        <div className="mt-4 grid grid-cols-2 gap-3">
+                                            <div className="rounded-xl border border-slate-200 bg-white p-3">
+                                                <p className="text-[11px] uppercase tracking-wide text-slate-400">
+                                                    Stations observed
+                                                </p>
+
+                                                <p className="mt-1 text-lg font-bold text-slate-900">
+                                                    {result.journey.observed_stations}
+                                                </p>
+                                            </div>
+
+                                            <div className="rounded-xl border border-slate-200 bg-white p-3">
+                                                <p className="text-[11px] uppercase tracking-wide text-slate-400">
+                                                    Stations ahead
+                                                </p>
+
+                                                <p className="mt-1 text-lg font-bold text-slate-900">
+                                                    {result.journey.upcoming_stations}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Main ETA prediction */}
+                                    <div className="relative overflow-hidden rounded-2xl border border-sky-200 bg-gradient-to-br from-sky-50 via-white to-white p-5 sm:p-6">
+
+                                        <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-sky-100/60 blur-3xl" />
+
+                                        <div className="relative">
+                                            <div className="flex flex-wrap items-start justify-between gap-3">
+                                                <div>
+                                                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">
+                                                        Next station
+                                                    </p>
+
+                                                    <h4 className="mt-2 text-2xl font-bold tracking-tight text-slate-950">
+                                                        {nextPrediction
+                                                            ? (
+                                                                nextPrediction.station.name
+                                                                ?? nextPrediction.station.code
+                                                            )
+                                                            : isWaitingForObservations
+                                                                ? "Waiting for live data"
+                                                                : "Unavailable"}
+                                                    </h4>
+
+                                                    {nextPrediction?.station.code && (
+                                                        <p className="mt-1 text-sm text-slate-500">
+                                                            {nextPrediction.station.code}
+                                                        </p>
+                                                    )}
+                                                </div>
+
+                                                {nextPrediction && (
+                                                    <span
+                                                        className={confidenceClass(
+                                                            nextPrediction.forecast.confidence,
+                                                        )}
+                                                    >
+                                                        {nextPrediction.forecast.confidence}
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            <div className="mt-7">
+                                                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                                                    Predicted arrival
+                                                </p>
+
+                                                <p className="mt-1 text-4xl font-bold tracking-tight text-[#0876c9] sm:text-5xl">
+                                                    {nextPrediction?.forecast.eta
+                                                        ? new Date(
+                                                            nextPrediction.forecast.eta,
+                                                        ).toLocaleTimeString(
+                                                            "en-IN",
+                                                            {
+                                                                hour: "2-digit",
+                                                                minute: "2-digit",
+                                                                hour12: true,
+                                                            },
+                                                        )
+                                                        : "--"}
+                                                </p>
+                                            </div>
+
+                                            {nextPrediction && (
+                                                <div className="mt-7 grid gap-3 sm:grid-cols-3">
+
+                                                    <div className="rounded-xl border border-slate-200 bg-white p-3.5">
+                                                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                                                            Expected delay
+                                                        </p>
+
+                                                        <p
+                                                            className={[
+                                                                "mt-1.5 text-lg font-bold",
+                                                                nextPrediction.forecast.predicted_delay_min > 0
+                                                                    ? "text-rose-700"
+                                                                    : nextPrediction.forecast.predicted_delay_min < 0
+                                                                        ? "text-sky-700"
+                                                                        : "text-emerald-700",
+                                                            ].join(" ")}
+                                                        >
+                                                            {nextPrediction.forecast.predicted_delay_min > 0
+                                                                ? `+${nextPrediction.forecast.predicted_delay_min.toFixed(1)} min`
+                                                                : nextPrediction.forecast.predicted_delay_min < 0
+                                                                    ? `${nextPrediction.forecast.predicted_delay_min.toFixed(1)} min`
+                                                                    : "On time"}
+                                                        </p>
+                                                    </div>
+
+                                                    <div className="rounded-xl border border-slate-200 bg-white p-3.5">
+                                                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                                                            Confidence
+                                                        </p>
+
+                                                        <p className="mt-1.5 text-lg font-bold capitalize text-slate-900">
+                                                            {nextPrediction.forecast.confidence}
+                                                        </p>
+                                                    </div>
+
+                                                    <div className="rounded-xl border border-slate-200 bg-white p-3.5">
+                                                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                                                            Position source
+                                                        </p>
+
+                                                        <p className="mt-1.5 text-sm font-bold text-slate-900">
+                                                            {livePositionSource === "REAL_PROVIDER_GPS"
+                                                                ? "Live GPS"
+                                                                : livePositionSource === "CURRENT_STATION"
+                                                                    ? "Station position"
+                                                                    : livePositionSource === "ESTIMATED_BETWEEN_STATIONS"
+                                                                        ? "Estimated position"
+                                                                        : "Unavailable"}
+                                                        </p>
+                                                    </div>
+
+                                                </div>
+                                            )}
+
+                                            {!nextPrediction &&
+                                                isWaitingForObservations && (
+                                                    <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4">
+                                                        <p className="text-sm font-semibold text-amber-900">
+                                                            Waiting for verified live observations
+                                                        </p>
+
+                                                        <p className="mt-1 text-xs leading-5 text-amber-700">
+                                                            RailETA will generate the next-station prediction
+                                                            when sufficient live journey information becomes
+                                                            available.
+                                                        </p>
+                                                    </div>
+                                                )}
+                                        </div>
+                                    </div>
+
+                                </div>
+                            )}
+                            {/* Passenger-friendly ETA explanation */}
+                            {nextPrediction &&
+                                result.diagnostics
+                                    ?.prediction_explanation
+                                    ?.explanation_available && (
+                                    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+
+                                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                            <div>
+                                                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">
+                                                    Prediction explanation
+                                                </p>
+
+                                                <h3 className="mt-1 text-lg font-bold text-slate-950">
+                                                    Why this ETA?
+                                                </h3>
+
+                                                <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">
+                                                    Main model factors associated with the current
+                                                    arrival forecast.
+                                                </p>
+                                            </div>
+
+                                            <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-[11px] font-medium text-sky-700">
+                                                <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
+                                                Model explanation available
+                                            </span>
+                                        </div>
+
+                                        <div className="mt-5 space-y-3">
                                             {result.diagnostics
                                                 .prediction_explanation
                                                 .factors
-                                                .slice(0, 3)
-                                                .map((factor) => (
-                                                    <div
-                                                        key={`${factor.feature}-${factor.rank ?? 0}`}
-                                                        className="rounded-xl bg-gray-50 p-4"
-                                                    >
-                                                        <p className="font-semibold text-gray-900">
-                                                            {factor.display_name
-                                                                ?? factor.feature}
-                                                        </p>
+                                                .slice(0, 4)
+                                                .map((factor) => {
+                                                    const contribution =
+                                                        factor.contribution ?? 0;
 
-                                                        <p className="mt-2 text-sm text-gray-600">
-                                                            {factor.direction
-                                                                === "INCREASES_DELAY"
-                                                                ? "Associated with a later arrival."
-                                                                : factor.direction
-                                                                    === "REDUCES_DELAY"
-                                                                    ? "Associated with an earlier arrival."
-                                                                    : "Influences the current ETA forecast."}
-                                                        </p>
+                                                    const absoluteContribution =
+                                                        Math.abs(contribution);
 
-                                                        {factor.contribution
-                                                            != null && (
-                                                                <p className="mt-2 text-xs text-gray-500">
-                                                                    Model contribution:{" "}
-                                                                    <span className="font-semibold text-gray-700">
-                                                                        {Math.abs(
-                                                                            factor.contribution,
-                                                                        ).toFixed(1)} min
-                                                                    </span>
-                                                                </p>
+                                                    const directionLabel =
+                                                        factor.direction === "INCREASES_DELAY"
+                                                            ? "Pushes ETA later"
+                                                            : factor.direction === "REDUCES_DELAY"
+                                                                ? "Pushes ETA earlier"
+                                                                : "Influences ETA";
+
+                                                    return (
+                                                        <div
+                                                            key={`${factor.feature}-${factor.rank ?? 0}`}
+                                                            className="rounded-xl border border-slate-200 bg-slate-50/70 p-4"
+                                                        >
+                                                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+
+                                                                <div className="min-w-0">
+                                                                    <div className="flex flex-wrap items-center gap-2">
+                                                                        <p className="font-semibold text-slate-900">
+                                                                            {factor.display_name
+                                                                                ?? factor.feature}
+                                                                        </p>
+
+                                                                        <span
+                                                                            className={[
+                                                                                "rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+                                                                                factor.direction === "INCREASES_DELAY"
+                                                                                    ? "border-rose-200 bg-rose-50 text-rose-700"
+                                                                                    : factor.direction === "REDUCES_DELAY"
+                                                                                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                                                                        : "border-slate-200 bg-white text-slate-600",
+                                                                            ].join(" ")}
+                                                                        >
+                                                                            {directionLabel}
+                                                                        </span>
+                                                                    </div>
+
+                                                                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                                                                        {factor.direction === "INCREASES_DELAY"
+                                                                            ? "Associated with a later predicted arrival."
+                                                                            : factor.direction === "REDUCES_DELAY"
+                                                                                ? "Associated with an earlier predicted arrival."
+                                                                                : "Used as part of the current ETA prediction."}
+                                                                    </p>
+                                                                </div>
+
+                                                                {factor.contribution != null && (
+                                                                    <div className="shrink-0 text-left sm:text-right">
+                                                                        <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
+                                                                            Model contribution
+                                                                        </p>
+
+                                                                        <p
+                                                                            className={[
+                                                                                "mt-1 text-base font-bold",
+                                                                                contribution > 0
+                                                                                    ? "text-rose-700"
+                                                                                    : contribution < 0
+                                                                                        ? "text-emerald-700"
+                                                                                        : "text-slate-700",
+                                                                            ].join(" ")}
+                                                                        >
+                                                                            {contribution > 0
+                                                                                ? "+"
+                                                                                : contribution < 0
+                                                                                    ? "−"
+                                                                                    : ""}
+                                                                            {absoluteContribution.toFixed(1)} min
+                                                                        </p>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+
+                                                            {factor.contribution != null && (
+                                                                <div className="mt-3">
+                                                                    <div className="h-1.5 overflow-hidden rounded-full bg-slate-200">
+                                                                        <div
+                                                                            className={[
+                                                                                "h-full rounded-full",
+                                                                                contribution > 0
+                                                                                    ? "bg-rose-500"
+                                                                                    : contribution < 0
+                                                                                        ? "bg-emerald-500"
+                                                                                        : "bg-slate-400",
+                                                                            ].join(" ")}
+                                                                            style={{
+                                                                                width: `${Math.min(
+                                                                                    100,
+                                                                                    Math.max(
+                                                                                        8,
+                                                                                        absoluteContribution * 5,
+                                                                                    ),
+                                                                                )}%`,
+                                                                            }}
+                                                                        />
+                                                                    </div>
+                                                                </div>
                                                             )}
-                                                    </div>
-                                                ))}
+                                                        </div>
+                                                    );
+                                                })}
                                         </div>
 
                                         {result.diagnostics
                                             .prediction_explanation
                                             .interpretation && (
-                                                <p className="mt-4 rounded-xl border bg-gray-50 p-3 text-sm leading-6 text-gray-600">
-                                                    {
-                                                        result.diagnostics
-                                                            .prediction_explanation
-                                                            .interpretation
-                                                    }
-                                                </p>
+                                                <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                                                        Interpretation
+                                                    </p>
+
+                                                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                                                        {
+                                                            result.diagnostics
+                                                                .prediction_explanation
+                                                                .interpretation
+                                                        }
+                                                    </p>
+                                                </div>
                                             )}
+
+                                        <div className="mt-4 flex items-start gap-2 rounded-xl bg-sky-50 px-3 py-2.5">
+                                            <span className="mt-0.5 text-sky-600">
+                                                ⓘ
+                                            </span>
+
+                                            <p className="text-xs leading-5 text-sky-800">
+                                                These factors describe model associations with the
+                                                prediction. They should not be interpreted as direct
+                                                causal effects.
+                                            </p>
+                                        </div>
+
                                     </div>
                                 )}
                         </div>
@@ -1293,16 +1704,6 @@ export default function LiveTrainSearch() {
                             </div>
                         )}
 
-                        {result.backend && (
-                            <p className="text-xs text-gray-500">
-                                Live data cache:{" "}
-                                {
-                                    result.backend
-                                        .provider_payload_cache
-                                }
-                            </p>
-                        )}
-
                         {hasLiveResult
                             && !isCompletedJourney
                             && !isWaitingForObservations
@@ -1322,131 +1723,189 @@ export default function LiveTrainSearch() {
 
 
             {result && (
-                <div className="grid gap-6 xl:grid-cols-[1.6fr_1fr]">
+                <div className="grid gap-5 xl:grid-cols-[1.65fr_0.85fr]">
 
-                    {!isScheduledNotStarted
-                        && result.route && (
-                            <div className="space-y-4 rounded-2xl border bg-white p-4 shadow-sm sm:p-5">
-                                <div>
-                                    <h3 className="text-xl font-bold">
-                                        Live Route Map
-                                    </h3>
+                    {/* Route map */}
+                    {!isScheduledNotStarted &&
+                        result.route && (
+                            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
 
-                                    <p className="mt-1 text-sm text-gray-600">
-                                        Live train position,
-                                        upcoming stations and
-                                        weather risk along the
-                                        route.
-                                    </p>
-                                </div>
+                                <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-6">
+                                    <div>
+                                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">
+                                            Route intelligence
+                                        </p>
 
-                                <RouteMap
-                                    key={`${result.journey.train_number}-${result.route.current_position?.latitude ?? "na"}-${result.route.current_position?.longitude ?? "na"}`}
-                                    route={result.route}
-                                    etaWeather={
-                                        result
-                                            .eta_weather_corridor
-                                    }
-                                />
-                            </div>
-                        )}
+                                        <h3 className="mt-1 text-lg font-bold text-slate-950">
+                                            {isCompletedJourney
+                                                ? "Journey Route Map"
+                                                : "Live Route Map"}
+                                        </h3>
 
-                    {!isScheduledNotStarted
-                        && result.eta_weather_corridor
-                            .length > 0 && (
-                            <div className="space-y-3">
-                                <div>
-                                    <h3 className="text-xl font-bold">
-                                        Weather Ahead
-                                    </h3>
+                                        <p className="mt-1 max-w-xl text-sm leading-6 text-slate-500">
+                                            {isCompletedJourney
+                                                ? "Completed route and station progression for this journey."
+                                                : "Current train position, route progress and upcoming stations."}
+                                        </p>
+                                    </div>
 
-                                    <p className="mt-1 text-sm text-gray-600">
-                                        Forecast conditions near
-                                        predicted station arrival
-                                        times.
-                                    </p>
+                                    <div className="flex flex-wrap gap-2">
+                                        <span
+                                            className={[
+                                                "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold",
+                                                isCompletedJourney
+                                                    ? "border-slate-200 bg-slate-100 text-slate-700"
+                                                    : "border-emerald-200 bg-emerald-50 text-emerald-700",
+                                            ].join(" ")}
+                                        >
+                                            <span
+                                                className={[
+                                                    "h-1.5 w-1.5 rounded-full",
+                                                    isCompletedJourney
+                                                        ? "bg-slate-500"
+                                                        : "bg-emerald-500",
+                                                ].join(" ")}
+                                            />
 
-                                    <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                                        <span className="rounded-full border border-green-300 bg-green-50 px-3 py-1 font-medium text-green-800">
-                                            LOW
+                                            {isCompletedJourney
+                                                ? "Completed"
+                                                : "Live journey"}
                                         </span>
 
-                                        <span className="rounded-full border border-yellow-300 bg-yellow-50 px-3 py-1 font-medium text-yellow-800">
-                                            MODERATE
-                                        </span>
-
-                                        <span className="rounded-full border border-orange-300 bg-orange-50 px-3 py-1 font-medium text-orange-800">
-                                            HIGH
-                                        </span>
-
-                                        <span className="rounded-full border border-red-300 bg-red-100 px-3 py-1 font-medium text-red-800">
-                                            SEVERE
-                                        </span>
+                                        {!isCompletedJourney && (
+                                            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600">
+                                                {livePositionSource === "REAL_PROVIDER_GPS"
+                                                    ? "Live GPS"
+                                                    : livePositionSource === "CURRENT_STATION"
+                                                        ? "Station position"
+                                                        : livePositionSource === "ESTIMATED_BETWEEN_STATIONS"
+                                                            ? "Estimated position"
+                                                            : "Position unavailable"}
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
 
-                                <div className="max-h-[520px] space-y-3 overflow-y-auto pr-1">
-                                    {result
-                                        .eta_weather_corridor
-                                        .map((item) => {
+                                <div className="p-3 sm:p-4">
+                                    <RouteMap
+                                        key={`${result.journey.train_number}-${result.route.current_position?.latitude ?? "na"}-${result.route.current_position?.longitude ?? "na"}`}
+                                        route={result.route}
+                                        etaWeather={
+                                            result.eta_weather_corridor
+                                        }
+                                    />
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-slate-100 bg-slate-50/60 px-5 py-3 text-[11px] text-slate-500 sm:px-6">
+                                    <span>
+                                        <strong className="font-semibold text-slate-700">
+                                            Route status:
+                                        </strong>{" "}
+                                        {isCompletedJourney
+                                            ? "Completed"
+                                            : "Running"}
+                                    </span>
+
+                                    {!isCompletedJourney && (
+                                        <span>
+                                            <strong className="font-semibold text-slate-700">
+                                                Position:
+                                            </strong>{" "}
+                                            {livePositionSource === "REAL_PROVIDER_GPS"
+                                                ? "Provider GPS"
+                                                : livePositionSource === "CURRENT_STATION"
+                                                    ? "Current station"
+                                                    : livePositionSource === "ESTIMATED_BETWEEN_STATIONS"
+                                                        ? "Estimated between stations"
+                                                        : "Unavailable"}
+                                        </span>
+                                    )}
+
+                                    {result.backend && (
+                                        <span>
+                                            <strong className="font-semibold text-slate-700">
+                                                Live cache:
+                                            </strong>{" "}
+                                            {result.backend.provider_payload_cache}
+                                        </span>
+                                    )}
+                                </div>
+                            </section>
+                        )}
+
+                    {/* Conditions ahead */}
+                    {!isScheduledNotStarted &&
+                        !isCompletedJourney &&
+                        result.eta_weather_corridor.length > 0 && (
+                            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+
+                                <div className="border-b border-slate-100 px-5 py-4">
+                                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">
+                                        Journey context
+                                    </p>
+
+                                    <h3 className="mt-1 text-lg font-bold text-slate-950">
+                                        Conditions ahead
+                                    </h3>
+
+                                    <p className="mt-1 text-sm leading-6 text-slate-500">
+                                        Weather near predicted station arrival times.
+                                    </p>
+                                </div>
+
+                                <div className="max-h-[520px] divide-y divide-slate-100 overflow-y-auto">
+                                    {result.eta_weather_corridor.map(
+                                        (item) => {
                                             const weather =
                                                 item.weather;
 
                                             return (
                                                 <div
-                                                    key={
-                                                        item.station_code
-                                                    }
-                                                    className="rounded-xl border bg-white p-4 shadow-sm"
+                                                    key={item.station_code}
+                                                    className="px-5 py-4"
                                                 >
                                                     <div className="flex items-start justify-between gap-3">
-                                                        <div>
-                                                            <p className="font-semibold">
+                                                        <div className="min-w-0">
+                                                            <p className="truncate font-semibold text-slate-900">
                                                                 {item.station_name
                                                                     ?? item.station_code}
                                                             </p>
 
-                                                            <p className="text-xs text-gray-500">
-                                                                {
-                                                                    item.station_code
-                                                                }
+                                                            <p className="mt-0.5 text-xs text-slate-400">
+                                                                {item.station_code}
                                                             </p>
                                                         </div>
 
                                                         <span
-                                                            className={`rounded-full border px-2 py-1 text-xs font-semibold ${weatherRiskClass(
-                                                                weather
-                                                                    ?.risk_level
+                                                            className={`shrink-0 rounded-full border px-2 py-1 text-[10px] font-semibold ${weatherRiskClass(
+                                                                weather?.risk_level
                                                                 ?? "UNKNOWN",
                                                             )}`}
                                                         >
-                                                            {weather
-                                                                ?.risk_level
+                                                            {weather?.risk_level
                                                                 ?? "UNKNOWN"}
                                                         </span>
                                                     </div>
 
-                                                    <div className="mt-3 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                                                    <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
                                                         <div>
-                                                            <p className="text-xs text-gray-500">
+                                                            <p className="text-[10px] uppercase tracking-wide text-slate-400">
                                                                 Condition
                                                             </p>
 
-                                                            <p className="font-medium">
-                                                                {weather
-                                                                    ?.condition
+                                                            <p className="mt-1 font-medium text-slate-700">
+                                                                {weather?.condition
                                                                     ?? "Unavailable"}
                                                             </p>
                                                         </div>
 
                                                         <div>
-                                                            <p className="text-xs text-gray-500">
+                                                            <p className="text-[10px] uppercase tracking-wide text-slate-400">
                                                                 Temperature
                                                             </p>
 
-                                                            <p className="font-medium">
-                                                                {weather
-                                                                    ?.temperature_c
+                                                            <p className="mt-1 font-medium text-slate-700">
+                                                                {weather?.temperature_c
                                                                     != null
                                                                     ? `${weather.temperature_c}°C`
                                                                     : "N/A"}
@@ -1454,14 +1913,12 @@ export default function LiveTrainSearch() {
                                                         </div>
 
                                                         <div>
-                                                            <p className="text-xs text-gray-500">
-                                                                Rain
-                                                                probability
+                                                            <p className="text-[10px] uppercase tracking-wide text-slate-400">
+                                                                Rain probability
                                                             </p>
 
-                                                            <p className="font-medium">
-                                                                {weather
-                                                                    ?.precipitation_probability_pct
+                                                            <p className="mt-1 font-medium text-slate-700">
+                                                                {weather?.precipitation_probability_pct
                                                                     != null
                                                                     ? `${weather.precipitation_probability_pct}%`
                                                                     : "N/A"}
@@ -1469,22 +1926,19 @@ export default function LiveTrainSearch() {
                                                         </div>
 
                                                         <div>
-                                                            <p className="text-xs text-gray-500">
+                                                            <p className="text-[10px] uppercase tracking-wide text-slate-400">
                                                                 Arrival ETA
                                                             </p>
 
-                                                            <p className="font-medium">
+                                                            <p className="mt-1 font-semibold text-sky-700">
                                                                 {new Date(
                                                                     item.predicted_eta,
                                                                 ).toLocaleTimeString(
                                                                     "en-IN",
                                                                     {
-                                                                        hour:
-                                                                            "2-digit",
-                                                                        minute:
-                                                                            "2-digit",
-                                                                        hour12:
-                                                                            true,
+                                                                        hour: "2-digit",
+                                                                        minute: "2-digit",
+                                                                        hour12: true,
                                                                     },
                                                                 )}
                                                             </p>
@@ -1492,25 +1946,39 @@ export default function LiveTrainSearch() {
                                                     </div>
                                                 </div>
                                             );
-                                        })}
+                                        },
+                                    )}
                                 </div>
-                            </div>
+
+                                <div className="border-t border-slate-100 bg-slate-50/70 px-5 py-3">
+                                    <p className="text-[11px] leading-5 text-slate-500">
+                                        Weather is treated as contextual information.
+                                        Specific delay minutes are not attributed to weather
+                                        unless supported by the prediction model.
+                                    </p>
+                                </div>
+
+                            </section>
                         )}
                 </div>
             )}
-
             {result && result.predictions.length > 0 && (
-                <div className="space-y-3">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+
+                    <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
                         <div>
-                            <h3 className="text-xl font-bold">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">
+                                Upcoming predictions
+                            </p>
+
+                            <h3 className="mt-1 text-lg font-bold text-slate-950">
                                 {showAllStationProgress
-                                    ? "Upcoming Stations"
-                                    : "Next 5 Stations"}
+                                    ? "All upcoming stations"
+                                    : "Next 5 stations"}
                             </h3>
 
-                            <p className="mt-1 text-sm text-gray-600">
-                                Predicted arrival progress for this journey.
+                            <p className="mt-1 text-sm text-slate-500">
+                                Station-level ETA predictions for the remaining journey.
                             </p>
                         </div>
 
@@ -1522,16 +1990,25 @@ export default function LiveTrainSearch() {
                                         (current) => !current,
                                     )
                                 }
-                                className="rounded-lg border bg-white px-4 py-2 text-sm font-semibold transition hover:bg-gray-50"
+                                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                             >
                                 {showAllStationProgress
-                                    ? "Show Next 5"
-                                    : `View All ${result.predictions.length}`}
+                                    ? "Show next 5"
+                                    : `View all ${result.predictions.length}`}
                             </button>
                         )}
                     </div>
 
-                    <div className="overflow-hidden rounded-xl border bg-white">
+                    {/* Desktop header */}
+                    <div className="hidden grid-cols-[minmax(0,1.6fr)_130px_100px_120px_120px] gap-3 border-b border-slate-100 bg-slate-50/70 px-5 py-2.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400 md:grid md:px-6">
+                        <span>Station</span>
+                        <span>Predicted ETA</span>
+                        <span>Delay</span>
+                        <span>Confidence</span>
+                        <span>Weather risk</span>
+                    </div>
+
+                    <div>
                         {(
                             showAllStationProgress
                                 ? result.predictions
@@ -1540,8 +2017,8 @@ export default function LiveTrainSearch() {
                             const weatherEntry =
                                 result.eta_weather_corridor.find(
                                     (item) =>
-                                        item.station_code
-                                        === prediction.station.code,
+                                        item.station_code ===
+                                        prediction.station.code,
                                 );
 
                             const weather =
@@ -1551,27 +2028,34 @@ export default function LiveTrainSearch() {
                                 prediction.station.stations_ahead === 1;
 
                             const isLast =
-                                prediction.station.stations_ahead
-                                === result.predictions.length;
+                                prediction.station.stations_ahead ===
+                                result.predictions.length;
 
                             return (
                                 <div
                                     key={`${prediction.station.code}-${prediction.station.stations_ahead}-${index}`}
-                                    className={`grid gap-4 border-b p-4 last:border-b-0 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_0.8fr_1fr] ${stationRowClass(
-                                        isNext,
-                                        isLast,
-                                    )}`}
+                                    className={[
+                                        "grid gap-3 border-b border-slate-100 px-5 py-4 last:border-b-0 md:grid-cols-[minmax(0,1.6fr)_130px_100px_120px_120px] md:items-center md:px-6",
+                                        isNext
+                                            ? "bg-sky-50/70"
+                                            : isLast
+                                                ? "bg-slate-50"
+                                                : "bg-white",
+                                    ].join(" ")}
                                 >
-                                    <div>
-                                        <div className="flex items-center gap-3">
+
+                                    {/* Station */}
+                                    <div className="min-w-0">
+                                        <div className="flex flex-wrap items-center gap-2">
                                             <div
-                                                className={
+                                                className={[
+                                                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
                                                     isNext
-                                                        ? "flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white"
+                                                        ? "bg-sky-600 text-white"
                                                         : isLast
-                                                            ? "flex h-8 w-8 items-center justify-center rounded-full bg-gray-900 text-sm font-bold text-white"
-                                                            : "flex h-8 w-8 items-center justify-center rounded-full border bg-white text-sm font-bold text-gray-600"
-                                                }
+                                                            ? "bg-slate-800 text-white"
+                                                            : "border border-slate-200 bg-white text-slate-600",
+                                                ].join(" ")}
                                             >
                                                 {isNext
                                                     ? "→"
@@ -1580,27 +2064,27 @@ export default function LiveTrainSearch() {
                                                         : prediction.station.stations_ahead}
                                             </div>
 
-                                            <div>
+                                            <div className="min-w-0">
                                                 <div className="flex flex-wrap items-center gap-2">
-                                                    <p className="font-semibold">
+                                                    <p className="truncate font-semibold text-slate-950">
                                                         {prediction.station.name
                                                             ?? prediction.station.code}
                                                     </p>
 
                                                     {isNext && (
-                                                        <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-semibold uppercase text-white">
+                                                        <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-sky-700">
                                                             Next
                                                         </span>
                                                     )}
 
                                                     {isLast && (
-                                                        <span className="rounded-full bg-gray-900 px-2 py-0.5 text-[10px] font-semibold uppercase text-white">
+                                                        <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold uppercase text-slate-700">
                                                             Destination
                                                         </span>
                                                     )}
                                                 </div>
 
-                                                <p className="text-xs text-gray-500">
+                                                <p className="mt-0.5 text-xs text-slate-400">
                                                     {prediction.station.code}
                                                     {" • "}
                                                     {prediction.station.stations_ahead}{" "}
@@ -1614,20 +2098,26 @@ export default function LiveTrainSearch() {
                                         </div>
                                     </div>
 
+                                    {/* Predicted ETA */}
                                     <div>
-                                        <p className="text-xs uppercase text-gray-500">
+                                        <p className="text-[10px] uppercase tracking-wide text-slate-400 md:hidden">
                                             Predicted ETA
                                         </p>
 
-                                        <p className="font-medium">
+                                        <p
+                                            className={[
+                                                "mt-1 text-sm font-semibold md:mt-0",
+                                                isNext
+                                                    ? "text-sky-700"
+                                                    : "text-slate-800",
+                                            ].join(" ")}
+                                        >
                                             {prediction.forecast.eta
                                                 ? new Date(
                                                     prediction.forecast.eta,
-                                                ).toLocaleString(
+                                                ).toLocaleTimeString(
                                                     "en-IN",
                                                     {
-                                                        day: "2-digit",
-                                                        month: "short",
                                                         hour: "2-digit",
                                                         minute: "2-digit",
                                                         hour12: true,
@@ -1637,27 +2127,56 @@ export default function LiveTrainSearch() {
                                         </p>
                                     </div>
 
+                                    {/* Delay */}
                                     <div>
-                                        <p className="text-xs uppercase text-gray-500">
+                                        <p className="text-[10px] uppercase tracking-wide text-slate-400 md:hidden">
                                             Delay
                                         </p>
 
-                                        <p className="font-medium">
-                                            {
-                                                prediction.forecast
-                                                    .predicted_delay_min
-                                            }{" "}
-                                            min
-                                        </p>
+                                        <span
+                                            className={[
+                                                "mt-1 inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold md:mt-0",
+                                                prediction.forecast.predicted_delay_min > 0
+                                                    ? "bg-rose-50 text-rose-700"
+                                                    : prediction.forecast.predicted_delay_min < 0
+                                                        ? "bg-sky-50 text-sky-700"
+                                                        : "bg-emerald-50 text-emerald-700",
+                                            ].join(" ")}
+                                        >
+                                            {prediction.forecast.predicted_delay_min > 0
+                                                ? `+${prediction.forecast.predicted_delay_min.toFixed(1)} min`
+                                                : prediction.forecast.predicted_delay_min < 0
+                                                    ? `${prediction.forecast.predicted_delay_min.toFixed(1)} min`
+                                                    : "On time"}
+                                        </span>
                                     </div>
 
+                                    {/* Confidence */}
                                     <div>
-                                        <p className="text-xs uppercase text-gray-500">
-                                            Weather Risk
+                                        <p className="text-[10px] uppercase tracking-wide text-slate-400 md:hidden">
+                                            Confidence
                                         </p>
 
                                         <span
-                                            className={`mt-1 inline-flex rounded-full border px-2 py-1 text-xs font-semibold ${weatherRiskClass(
+                                            className={[
+                                                "mt-1 inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold capitalize md:mt-0",
+                                                confidenceClass(
+                                                    prediction.forecast.confidence,
+                                                ),
+                                            ].join(" ")}
+                                        >
+                                            {prediction.forecast.confidence}
+                                        </span>
+                                    </div>
+
+                                    {/* Weather */}
+                                    <div>
+                                        <p className="text-[10px] uppercase tracking-wide text-slate-400 md:hidden">
+                                            Weather risk
+                                        </p>
+
+                                        <span
+                                            className={`mt-1 inline-flex rounded-full border px-2 py-1 text-[10px] font-semibold md:mt-0 ${weatherRiskClass(
                                                 weather?.risk_level
                                                 ?? "UNKNOWN",
                                             )}`}
@@ -1667,69 +2186,155 @@ export default function LiveTrainSearch() {
                                         </span>
 
                                         {weather?.condition && (
-                                            <p className="mt-1 text-xs text-gray-500">
+                                            <p className="mt-1 text-[10px] text-slate-400">
                                                 {weather.condition}
                                             </p>
                                         )}
                                     </div>
+
                                 </div>
                             );
                         })}
                     </div>
-                </div>
-            )}
-            {result && result.predictions.length > 0 && (
-                <div className="space-y-3">
-                    <div>
-                        <h3 className="text-xl font-bold">
-                            Model Insights
-                        </h3>
 
-                        <p className="mt-1 text-sm text-gray-600">
-                            Advanced model evaluation and explainability.
-                        </p>
+                    <div className="border-t border-slate-100 bg-slate-50/60 px-5 py-3 text-[11px] leading-5 text-slate-500 sm:px-6">
+                        Predicted arrival times are generated from the latest verified journey observations and model outputs.
                     </div>
-                    <button
-                        type="button"
-                        onClick={() =>
-                            setShowModelInsights(
-                                (current) => !current,
-                            )
-                        }
-                        className="rounded-lg border bg-white px-4 py-2 text-sm font-semibold transition hover:bg-gray-50"
-                    >
-                        {showModelInsights
-                            ? "Hide Advanced Details"
-                            : "Show Advanced Details"}
-                    </button>
+
+                </section>
+            )}
+
+            {result && result.predictions.length > 0 && (
+                <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+
+                    <div className="flex flex-col gap-4 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                        <div>
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">
+                                Model intelligence
+                            </p>
+
+                            <h3 className="mt-1 text-lg font-bold text-slate-950">
+                                Prediction diagnostics
+                            </h3>
+
+                            <p className="mt-1 text-sm leading-6 text-slate-500">
+                                Model explanation, evaluation metrics and serving details
+                                for the current ETA prediction.
+                            </p>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={() =>
+                                setShowModelInsights(
+                                    (current) => !current,
+                                )
+                            }
+                            className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                        >
+                            {showModelInsights
+                                ? "Hide advanced details"
+                                : "Show advanced details"}
+                        </button>
+                    </div>
+
+                    {/* Compact summary */}
+                    <div className="grid gap-3 border-b border-slate-100 bg-slate-50/50 p-5 sm:grid-cols-2 lg:grid-cols-4 sm:px-6">
+
+                        <div className="rounded-xl border border-slate-200 bg-white p-3.5">
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                Explanation
+                            </p>
+
+                            <p
+                                className={[
+                                    "mt-1.5 text-sm font-bold",
+                                    result.diagnostics?.prediction_explanation
+                                        ?.explanation_available
+                                        ? "text-emerald-700"
+                                        : "text-slate-700",
+                                ].join(" ")}
+                            >
+                                {result.diagnostics?.prediction_explanation
+                                    ?.explanation_available
+                                    ? "Available"
+                                    : "Unavailable"}
+                            </p>
+                        </div>
+
+                        <div className="rounded-xl border border-slate-200 bg-white p-3.5">
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                Observed stations
+                            </p>
+
+                            <p className="mt-1.5 text-lg font-bold text-slate-950">
+                                {result.journey.observed_stations}
+                            </p>
+                        </div>
+
+                        <div className="rounded-xl border border-slate-200 bg-white p-3.5">
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                Upcoming stations
+                            </p>
+
+                            <p className="mt-1.5 text-lg font-bold text-slate-950">
+                                {result.journey.upcoming_stations}
+                            </p>
+                        </div>
+
+                        <div className="rounded-xl border border-slate-200 bg-white p-3.5">
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                Evaluation
+                            </p>
+
+                            <p
+                                className={[
+                                    "mt-1.5 text-sm font-bold",
+                                    result.diagnostics?.evaluation
+                                        ? "text-emerald-700"
+                                        : "text-slate-700",
+                                ].join(" ")}
+                            >
+                                {result.diagnostics?.evaluation
+                                    ? "Metrics available"
+                                    : "Unavailable"}
+                            </p>
+                        </div>
+                    </div>
 
                     {showModelInsights && (
-
-
-
-                        <div className="grid gap-4 xl:grid-cols-2">
+                        <div className="grid gap-4 p-5 xl:grid-cols-2 sm:p-6">
 
                             {/* Explainability */}
-                            <div className="rounded-2xl border bg-white p-5 shadow-sm">
-                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                    Prediction Explainability
-                                </p>
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-5">
+                                <div>
+                                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                                        Prediction explainability
+                                    </p>
+
+                                    <h4 className="mt-1 font-bold text-slate-950">
+                                        Model factors
+                                    </h4>
+                                </div>
 
                                 {result.diagnostics
                                     ?.prediction_explanation
                                     ?.explanation_available ? (
                                     <div className="mt-4 space-y-3">
 
-                                        <p className="text-sm text-gray-600">
-                                            Method:{" "}
-                                            <span className="font-semibold text-gray-900">
+                                        <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+                                            <p className="text-xs text-slate-500">
+                                                Explanation method
+                                            </p>
+
+                                            <p className="mt-1 text-sm font-semibold text-slate-900">
                                                 {
                                                     result.diagnostics
                                                         .prediction_explanation
                                                         .method
                                                 }
-                                            </span>
-                                        </p>
+                                            </p>
+                                        </div>
 
                                         {result.diagnostics
                                             .prediction_explanation
@@ -1738,167 +2343,226 @@ export default function LiveTrainSearch() {
                                             .map((factor) => (
                                                 <div
                                                     key={`${factor.feature}-${factor.rank ?? 0}`}
-                                                    className="rounded-xl border p-3"
+                                                    className="rounded-xl border border-slate-200 bg-white p-3.5"
                                                 >
                                                     <div className="flex items-start justify-between gap-3">
-                                                        <div>
-                                                            <p className="font-semibold">
-                                                                {factor.display_name ?? factor.feature}
+
+                                                        <div className="min-w-0">
+                                                            <p className="font-semibold text-slate-900">
+                                                                {factor.display_name
+                                                                    ?? factor.feature}
                                                             </p>
 
-                                                            <p className="text-xs text-gray-500">
+                                                            <p className="mt-0.5 break-all text-[10px] text-slate-400">
                                                                 {factor.feature}
                                                             </p>
                                                         </div>
 
-                                                        <span className="rounded-full border px-2 py-1 text-xs font-semibold">
+                                                        <span
+                                                            className={[
+                                                                "shrink-0 rounded-full border px-2 py-1 text-[10px] font-semibold",
+                                                                factor.direction === "INCREASES_DELAY"
+                                                                    ? "border-rose-200 bg-rose-50 text-rose-700"
+                                                                    : factor.direction === "REDUCES_DELAY"
+                                                                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                                                        : "border-slate-200 bg-slate-50 text-slate-600",
+                                                            ].join(" ")}
+                                                        >
                                                             {factor.direction === "INCREASES_DELAY"
                                                                 ? "Pushes ETA later"
                                                                 : factor.direction === "REDUCES_DELAY"
                                                                     ? "Pulls ETA earlier"
-                                                                    : factor.direction}
+                                                                    : "Influences ETA"}
                                                         </span>
                                                     </div>
 
                                                     {factor.contribution != null && (
-                                                        <p className="mt-2 text-sm text-gray-600">
-                                                            Contribution:{" "}
-                                                            <span className="font-semibold text-gray-900">
+                                                        <div className="mt-3 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
+                                                            <span className="text-xs text-slate-500">
+                                                                Model contribution
+                                                            </span>
+
+                                                            <span
+                                                                className={[
+                                                                    "text-sm font-bold",
+                                                                    factor.contribution > 0
+                                                                        ? "text-rose-700"
+                                                                        : factor.contribution < 0
+                                                                            ? "text-emerald-700"
+                                                                            : "text-slate-700",
+                                                                ].join(" ")}
+                                                            >
+                                                                {factor.contribution > 0
+                                                                    ? "+"
+                                                                    : ""}
                                                                 {factor.contribution.toFixed(2)} min
                                                             </span>
-                                                        </p>
+                                                        </div>
                                                     )}
                                                 </div>
                                             ))}
 
-                                        {result.diagnostics.prediction_explanation.interpretation && (
-                                            <p className="rounded-lg bg-gray-50 p-3 text-xs leading-5 text-gray-600">
-                                                {result.diagnostics.prediction_explanation.interpretation}
-                                            </p>
-                                        )}
+                                        {result.diagnostics
+                                            .prediction_explanation
+                                            .interpretation && (
+                                                <div className="rounded-xl border border-sky-100 bg-sky-50 p-3">
+                                                    <p className="text-[10px] font-semibold uppercase tracking-wide text-sky-700">
+                                                        Interpretation
+                                                    </p>
 
+                                                    <p className="mt-1.5 text-xs leading-5 text-sky-900">
+                                                        {
+                                                            result.diagnostics
+                                                                .prediction_explanation
+                                                                .interpretation
+                                                        }
+                                                    </p>
+                                                </div>
+                                            )}
 
+                                        <p className="text-[11px] leading-5 text-slate-500">
+                                            Attribution values describe model associations,
+                                            not guaranteed causal effects.
+                                        </p>
                                     </div>
                                 ) : (
-                                    <div className="mt-4 rounded-xl border border-dashed bg-gray-50 p-4">
-                                        <p className="font-semibold">
-                                            Explainability not available yet
+                                    <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-white p-4">
+                                        <p className="font-semibold text-slate-900">
+                                            Explainability unavailable
                                         </p>
 
-                                        <p className="mt-1 text-sm text-gray-600">
-                                            Explanation is unavailable for this
-                                            prediction because attribution could
-                                            not be safely reconstructed for the
-                                            served model output.
+                                        <p className="mt-1 text-sm leading-6 text-slate-500">
+                                            Attribution could not be safely reconstructed for
+                                            the served model output.
                                         </p>
                                     </div>
                                 )}
                             </div>
 
-
                             {/* Evaluation */}
-                            <div className="rounded-2xl border bg-white p-5 shadow-sm">
-                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                    Model Evaluation
-                                </p>
-                                <p className="mt-2 text-xs leading-5 text-gray-500">
-                                    These values are evaluation errors in minutes, not an accuracy percentage.
-                                    Lower values indicate better performance.
-                                </p>
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-5">
+                                <div>
+                                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                                        Model evaluation
+                                    </p>
+
+                                    <h4 className="mt-1 font-bold text-slate-950">
+                                        Error metrics
+                                    </h4>
+
+                                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                                        These are prediction errors in minutes, not an
+                                        accuracy percentage. Lower values indicate better
+                                        performance.
+                                    </p>
+                                </div>
 
                                 {result.diagnostics?.evaluation ? (
-                                    <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                        <div className="rounded-xl bg-gray-50 p-3">
-                                            <p className="text-xs text-gray-500">
+                                    <div className="mt-4 grid grid-cols-2 gap-3">
+
+                                        <div className="rounded-xl border border-slate-200 bg-white p-3.5">
+                                            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                                                 MAE
                                             </p>
 
-                                            <p className="mt-1 text-xl font-bold">
+                                            <p className="mt-1.5 text-xl font-bold text-slate-950">
                                                 {result.diagnostics.evaluation.mae_minutes != null
                                                     ? `${result.diagnostics.evaluation.mae_minutes.toFixed(2)} min`
                                                     : "N/A"}
                                             </p>
-                                            Average absolute prediction error.
+
+                                            <p className="mt-1 text-[11px] leading-4 text-slate-500">
+                                                Average absolute prediction error.
+                                            </p>
                                         </div>
 
-                                        <div className="rounded-xl bg-gray-50 p-3">
-                                            <p className="text-xs text-gray-500">
+                                        <div className="rounded-xl border border-slate-200 bg-white p-3.5">
+                                            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                                                 RMSE
                                             </p>
 
-                                            <p className="mt-1 text-xl font-bold">
+                                            <p className="mt-1.5 text-xl font-bold text-slate-950">
                                                 {result.diagnostics.evaluation.rmse_minutes != null
                                                     ? `${result.diagnostics.evaluation.rmse_minutes.toFixed(2)} min`
                                                     : "N/A"}
                                             </p>
-                                            <p className="mt-1 text-xs text-gray-500">
-                                                Gives more weight to larger prediction errors.
+
+                                            <p className="mt-1 text-[11px] leading-4 text-slate-500">
+                                                Gives more weight to larger errors.
                                             </p>
                                         </div>
 
-                                        <div className="rounded-xl bg-gray-50 p-3">
-                                            <p className="text-xs text-gray-500">
-                                                Median Error
+                                        <div className="rounded-xl border border-slate-200 bg-white p-3.5">
+                                            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                                Median error
                                             </p>
 
-                                            <p className="mt-1 font-bold">
-                                                {result.diagnostics.evaluation.median_absolute_error_minutes != null
+                                            <p className="mt-1.5 text-lg font-bold text-slate-950">
+                                                {result.diagnostics.evaluation
+                                                    .median_absolute_error_minutes != null
                                                     ? `${result.diagnostics.evaluation.median_absolute_error_minutes.toFixed(2)} min`
                                                     : "N/A"}
                                             </p>
-                                            <p className="mt-1 text-xs text-gray-500">
+
+                                            <p className="mt-1 text-[11px] leading-4 text-slate-500">
                                                 Typical absolute prediction error.
                                             </p>
                                         </div>
 
-                                        <div className="rounded-xl bg-gray-50 p-3">
-                                            <p className="text-xs text-gray-500">
-                                                P90 Error
+                                        <div className="rounded-xl border border-slate-200 bg-white p-3.5">
+                                            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                                P90 error
                                             </p>
 
-                                            <p className="mt-1 font-bold">
-                                                {result.diagnostics.evaluation.p90_absolute_error_minutes != null
+                                            <p className="mt-1.5 text-lg font-bold text-slate-950">
+                                                {result.diagnostics.evaluation
+                                                    .p90_absolute_error_minutes != null
                                                     ? `${result.diagnostics.evaluation.p90_absolute_error_minutes.toFixed(2)} min`
                                                     : "N/A"}
                                             </p>
-                                            <p className="mt-1 text-xs text-gray-500">
+
+                                            <p className="mt-1 text-[11px] leading-4 text-slate-500">
                                                 90% of evaluated errors were below this value.
                                             </p>
                                         </div>
 
                                     </div>
                                 ) : (
-                                    <div className="mt-4 rounded-xl border border-dashed bg-gray-50 p-4">
-                                        <p className="font-semibold">
-                                            Evaluation metrics not available yet
+                                    <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-white p-4">
+                                        <p className="font-semibold text-slate-900">
+                                            Evaluation metrics unavailable
                                         </p>
 
-                                        <p className="mt-1 text-sm text-gray-600">
-                                            Evaluation metrics are unavailable for
-                                            the model serving this prediction.</p>
+                                        <p className="mt-1 text-sm leading-6 text-slate-500">
+                                            Evaluation metrics are unavailable for the model
+                                            serving this prediction.
+                                        </p>
                                     </div>
                                 )}
                             </div>
 
                         </div>
                     )}
-                </div>
+
+                </section>
             )}
 
-
-
-
             {result && result.predictions.length > 0 && (
-                <div className="space-y-4">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
+                <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+
+                    <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
                         <div>
-                            <h3 className="text-xl font-bold">
-                                Detailed ETA Predictions
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">
+                                Technical predictions
+                            </p>
+
+                            <h3 className="mt-1 text-lg font-bold text-slate-950">
+                                Detailed ETA predictions
                             </h3>
 
-                            <p className="mt-1 text-sm text-gray-600">
-                                Station-level prediction intervals,
-                                confidence and model details.
+                            <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">
+                                Prediction intervals, confidence, model routing and
+                                provider comparison for technical review.
                             </p>
                         </div>
 
@@ -1909,244 +2573,315 @@ export default function LiveTrainSearch() {
                                     (current) => !current,
                                 )
                             }
-                            className="w-full rounded-lg border bg-white px-4 py-2 text-sm font-semibold hover:bg-gray-50 sm:w-auto"
+                            className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                         >
                             {showDetailedPredictions
-                                ? "Hide Details"
-                                : `Show ${result.predictions.length} Predictions`}
+                                ? "Hide technical details"
+                                : `Show ${result.predictions.length} technical predictions`}
                         </button>
                     </div>
 
-                    {showDetailedPredictions && (
-                        <div className="space-y-4">
-                            {result.predictions.map(
-                                (prediction, index) => (
-                                    <article
-                                        key={`${prediction.station.code}-${prediction.station.stations_ahead}`}
-                                        className={
-                                            prediction.station.stations_ahead === 1
-                                                ? "rounded-2xl border-2 border-blue-600 bg-white p-4 shadow-sm sm:p-5"
-                                                : "rounded-2xl border bg-white p-4 shadow-sm sm:p-5"
-                                        }
-                                    >
-                                        {/* Station identity */}
-                                        <div className="flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-start sm:justify-between">
-                                            <div>
-                                                <div className="flex flex-wrap items-center gap-2">
-                                                    <p className="text-lg font-bold sm:text-xl">
-                                                        {prediction.station.name
-                                                            ?? prediction.station.code}
-                                                    </p>
-
-                                                    {prediction.station.stations_ahead === 1 && (
-                                                        <span className="rounded-full bg-blue-600 px-2.5 py-1 text-[10px] font-semibold uppercase text-white">
-                                                            Next Station
-                                                        </span>
-                                                    )}
-
-                                                    {index === result.predictions.length - 1 && (
-                                                        <span className="rounded-full bg-gray-900 px-2.5 py-1 text-[10px] font-semibold uppercase text-white">
-                                                            Destination
-                                                        </span>
-                                                    )}
-                                                </div>
-
-                                                <p className="mt-1 text-sm text-gray-500">
-                                                    {prediction.station.code}
-                                                    {" • "}
-                                                    {prediction.station.stations_ahead}{" "}
-                                                    station
-                                                    {prediction.station.stations_ahead === 1
-                                                        ? ""
-                                                        : "s"}{" "}
-                                                    ahead
-                                                </p>
-                                            </div>
-
-                                            <div className="sm:text-right">
-                                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                                    Expected Arrival
-                                                </p>
-
-                                                <p className="mt-1 text-2xl font-bold">
-                                                    {prediction.forecast.eta
-                                                        ? new Date(
-                                                            prediction.forecast.eta,
-                                                        ).toLocaleTimeString([], {
-                                                            hour: "2-digit",
-                                                            minute: "2-digit",
-                                                        })
-                                                        : "Unavailable"}
-                                                </p>
-
-                                                {prediction.forecast.eta && (
-                                                    <p className="mt-1 text-xs text-gray-500">
-                                                        {new Date(
-                                                            prediction.forecast.eta,
-                                                        ).toLocaleDateString([], {
-                                                            day: "numeric",
-                                                            month: "short",
-                                                        })}
-                                                    </p>
-                                                )}
-                                            </div>
-                                        </div>
-
-
-                                        {/* Passenger summary */}
-                                        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-
-                                            <div className="rounded-xl bg-gray-50 p-3">
-                                                <p className="text-xs uppercase text-gray-500">
-                                                    Expected Delay
-                                                </p>
-
-                                                <p className="mt-1 text-lg font-bold">
-                                                    {prediction.forecast.predicted_delay_min} min
-                                                </p>
-
-                                                <span
-                                                    className={`mt-2 inline-flex rounded-full border px-2 py-1 text-xs font-semibold ${delayBadgeClass(
-                                                        prediction.forecast.delay_status,
-                                                    )}`}
-                                                >
-                                                    {prediction.forecast.delay_status
-                                                        .replaceAll("_", " ")}
-                                                </span>
-                                            </div>
-
-
-                                            <div className="rounded-xl bg-gray-50 p-3">
-                                                <p className="text-xs uppercase text-gray-500">
-                                                    Forecast Confidence
-                                                </p>
-
-                                                <span
-                                                    className={`mt-2 inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${confidenceClass(
-                                                        prediction.forecast.confidence,
-                                                    )}`}
-                                                >
-                                                    {prediction.forecast.confidence}
-                                                </span>
-
-                                                <p className="mt-2 text-xs text-gray-500">
-                                                    {prediction.forecast.confidence === "HIGH"
-                                                        ? "Prediction is relatively more reliable."
-                                                        : prediction.forecast.confidence === "MEDIUM"
-                                                            ? "Arrival time may change as the train progresses."
-                                                            : "Use this ETA with additional caution."}
-                                                </p>
-                                            </div>
-
-
-                                            <div className="rounded-xl bg-gray-50 p-3 sm:col-span-2 lg:col-span-1">
-                                                <p className="text-xs uppercase text-gray-500">
-                                                    Expected Arrival Window
-                                                </p>
-
-                                                <p className="mt-1 text-sm font-semibold">
-                                                    {prediction.forecast.lower_eta
-                                                        ? new Date(
-                                                            prediction.forecast.lower_eta,
-                                                        ).toLocaleTimeString([], {
-                                                            hour: "2-digit",
-                                                            minute: "2-digit",
-                                                        })
-                                                        : "N/A"}
-
-                                                    {" – "}
-
-                                                    {prediction.forecast.upper_eta
-                                                        ? new Date(
-                                                            prediction.forecast.upper_eta,
-                                                        ).toLocaleTimeString([], {
-                                                            hour: "2-digit",
-                                                            minute: "2-digit",
-                                                        })
-                                                        : "N/A"}
-                                                </p>
-
-                                                <p className="mt-2 text-xs text-gray-500">
-                                                    Actual arrival may fall within this range.
-                                                </p>
-                                            </div>
-
-                                        </div>
-
-
-                                        {/* Technical details kept secondary */}
-                                        <details className="mt-4 rounded-xl border bg-gray-50">
-                                            <summary className="cursor-pointer px-4 py-3 text-sm font-semibold">
-                                                How was this ETA calculated?
-                                            </summary>
-
-                                            <div className="space-y-3 border-t px-4 py-3 text-sm text-gray-600">
-
-                                                <div>
-                                                    <span className="font-semibold text-gray-900">
-                                                        Forecast method:{" "}
-                                                    </span>
-
-                                                    <span>
-                                                        {prediction.model.prediction_engine === "MODEL_2_NEXT_STATION"
-                                                            ? "Next-station specialist"
-                                                            : prediction.model.prediction_engine === "MODEL_3_MULTI_HORIZON"
-                                                                ? "Multi-station forecast"
-                                                                : "Hybrid ETA forecast"}
-                                                    </span>
-                                                    <p className="text-xs text-gray-500">
-                                                        Engine: {prediction.model.prediction_engine}
-                                                    </p>
-                                                </div>
-
-                                                <p>
-                                                    {prediction.station.stations_ahead === 1
-                                                        ? "This ETA uses the latest observed train movement and recent delay pattern for the immediate next station."
-                                                        : "This ETA uses the current delay trend and guarded delay propagation for stations further ahead."}
-                                                </p>
-
-                                                {prediction.explanation && (
-                                                    <p className="text-xs text-gray-500">
-                                                        Technical note: {prediction.explanation}
-                                                    </p>
-                                                )}
-                                                {prediction.comparison_only.provider_eta && (
-                                                    <div className="rounded-lg border border-dashed bg-white p-3">
-                                                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                                            External Provider Reference
-                                                        </p>
-
-                                                        <p className="mt-1 font-medium text-gray-900">
-                                                            {new Date(
-                                                                prediction.comparison_only.provider_eta,
-                                                            ).toLocaleTimeString([], {
-                                                                hour: "2-digit",
-                                                                minute: "2-digit",
-                                                            })}
-                                                        </p>
-
-                                                        {prediction.comparison_only.provider_delay_min != null && (
-                                                            <p className="mt-1 text-xs text-gray-500">
-                                                                Provider-reported delay:{" "}
-                                                                {prediction.comparison_only.provider_delay_min} min
-                                                            </p>
-                                                        )}
-
-                                                        <p className="mt-2 text-xs text-gray-500">
-                                                            Reference only — this value is not used as the RailETA
-                                                            model prediction.
-                                                        </p>
-                                                    </div>
-                                                )}
-
-                                            </div>
-                                        </details>
-                                    </article>
-                                ),
-                            )}
+                    {!showDetailedPredictions && (
+                        <div className="border-t border-slate-100 bg-slate-50/60 px-5 py-3 text-[11px] leading-5 text-slate-500 sm:px-6">
+                            Detailed model metadata is hidden by default to keep the
+                            passenger experience focused on the most useful ETA information.
                         </div>
                     )}
-                </div>
+
+                    {showDetailedPredictions && (
+                        <div className="border-t border-slate-100">
+
+                            {/* Desktop headings */}
+                            <div className="hidden grid-cols-[minmax(0,1.5fr)_110px_100px_125px_minmax(180px,1fr)] gap-3 border-b border-slate-100 bg-slate-50/70 px-5 py-2.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400 lg:grid lg:px-6">
+                                <span>Station</span>
+                                <span>ETA</span>
+                                <span>Delay</span>
+                                <span>Confidence</span>
+                                <span>Prediction interval</span>
+                            </div>
+
+                            <div>
+                                {result.predictions.map(
+                                    (prediction, index) => {
+                                        const isNext =
+                                            prediction.station.stations_ahead === 1;
+
+                                        const isDestination =
+                                            index ===
+                                            result.predictions.length - 1;
+
+                                        return (
+                                            <article
+                                                key={`${prediction.station.code}-${prediction.station.stations_ahead}`}
+                                                className={[
+                                                    "border-b border-slate-100 px-5 py-4 last:border-b-0 sm:px-6",
+                                                    isNext
+                                                        ? "bg-sky-50/60"
+                                                        : "bg-white",
+                                                ].join(" ")}
+                                            >
+
+                                                <div className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_110px_100px_125px_minmax(180px,1fr)] lg:items-center">
+
+                                                    {/* Station */}
+                                                    <div>
+                                                        <div className="flex flex-wrap items-center gap-2">
+                                                            <p className="font-semibold text-slate-950">
+                                                                {prediction.station.name
+                                                                    ?? prediction.station.code}
+                                                            </p>
+
+                                                            {isNext && (
+                                                                <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-sky-700">
+                                                                    Next
+                                                                </span>
+                                                            )}
+
+                                                            {isDestination && (
+                                                                <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold uppercase text-slate-700">
+                                                                    Destination
+                                                                </span>
+                                                            )}
+                                                        </div>
+
+                                                        <p className="mt-1 text-xs text-slate-400">
+                                                            {prediction.station.code}
+                                                            {" • "}
+                                                            {prediction.station.stations_ahead}{" "}
+                                                            station
+                                                            {prediction.station.stations_ahead === 1
+                                                                ? ""
+                                                                : "s"}{" "}
+                                                            ahead
+                                                        </p>
+                                                    </div>
+
+                                                    {/* ETA */}
+                                                    <div>
+                                                        <p className="text-[10px] uppercase tracking-wide text-slate-400 lg:hidden">
+                                                            Predicted ETA
+                                                        </p>
+
+                                                        <p
+                                                            className={[
+                                                                "mt-1 text-sm font-semibold lg:mt-0",
+                                                                isNext
+                                                                    ? "text-sky-700"
+                                                                    : "text-slate-800",
+                                                            ].join(" ")}
+                                                        >
+                                                            {prediction.forecast.eta
+                                                                ? new Date(
+                                                                    prediction.forecast.eta,
+                                                                ).toLocaleTimeString(
+                                                                    "en-IN",
+                                                                    {
+                                                                        hour: "2-digit",
+                                                                        minute: "2-digit",
+                                                                        hour12: true,
+                                                                    },
+                                                                )
+                                                                : "Unavailable"}
+                                                        </p>
+                                                    </div>
+
+                                                    {/* Delay */}
+                                                    <div>
+                                                        <p className="text-[10px] uppercase tracking-wide text-slate-400 lg:hidden">
+                                                            Delay
+                                                        </p>
+
+                                                        <span
+                                                            className={[
+                                                                "mt-1 inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold lg:mt-0",
+                                                                prediction.forecast
+                                                                    .predicted_delay_min > 0
+                                                                    ? "bg-rose-50 text-rose-700"
+                                                                    : prediction.forecast
+                                                                        .predicted_delay_min < 0
+                                                                        ? "bg-sky-50 text-sky-700"
+                                                                        : "bg-emerald-50 text-emerald-700",
+                                                            ].join(" ")}
+                                                        >
+                                                            {prediction.forecast
+                                                                .predicted_delay_min > 0
+                                                                ? `+${prediction.forecast.predicted_delay_min.toFixed(1)} min`
+                                                                : prediction.forecast
+                                                                    .predicted_delay_min < 0
+                                                                    ? `${prediction.forecast.predicted_delay_min.toFixed(1)} min`
+                                                                    : "On time"}
+                                                        </span>
+                                                    </div>
+
+                                                    {/* Confidence */}
+                                                    <div>
+                                                        <p className="text-[10px] uppercase tracking-wide text-slate-400 lg:hidden">
+                                                            Confidence
+                                                        </p>
+
+                                                        <span
+                                                            className={[
+                                                                "mt-1 inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold lg:mt-0",
+                                                                confidenceClass(
+                                                                    prediction.forecast.confidence,
+                                                                ),
+                                                            ].join(" ")}
+                                                        >
+                                                            {prediction.forecast.confidence}
+                                                        </span>
+                                                    </div>
+
+                                                    {/* Interval */}
+                                                    <div>
+                                                        <p className="text-[10px] uppercase tracking-wide text-slate-400 lg:hidden">
+                                                            Prediction interval
+                                                        </p>
+
+                                                        <p className="mt-1 text-sm font-medium text-slate-700 lg:mt-0">
+                                                            {prediction.forecast.lower_eta
+                                                                ? new Date(
+                                                                    prediction.forecast.lower_eta,
+                                                                ).toLocaleTimeString(
+                                                                    "en-IN",
+                                                                    {
+                                                                        hour: "2-digit",
+                                                                        minute: "2-digit",
+                                                                        hour12: true,
+                                                                    },
+                                                                )
+                                                                : "N/A"}
+
+                                                            {" – "}
+
+                                                            {prediction.forecast.upper_eta
+                                                                ? new Date(
+                                                                    prediction.forecast.upper_eta,
+                                                                ).toLocaleTimeString(
+                                                                    "en-IN",
+                                                                    {
+                                                                        hour: "2-digit",
+                                                                        minute: "2-digit",
+                                                                        hour12: true,
+                                                                    },
+                                                                )
+                                                                : "N/A"}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                {/* Technical metadata */}
+                                                <details className="mt-4 rounded-xl border border-slate-200 bg-slate-50/70">
+                                                    <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-slate-700">
+                                                        Model and calculation details
+                                                    </summary>
+
+                                                    <div className="grid gap-4 border-t border-slate-200 bg-white px-4 py-4 md:grid-cols-2">
+
+                                                        <div>
+                                                            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                                                Forecast method
+                                                            </p>
+
+                                                            <p className="mt-1 text-sm font-semibold text-slate-900">
+                                                                {prediction.model.prediction_engine ===
+                                                                    "MODEL_2_NEXT_STATION"
+                                                                    ? "Next-station specialist"
+                                                                    : prediction.model.prediction_engine ===
+                                                                        "MODEL_3_MULTI_HORIZON"
+                                                                        ? "Multi-station forecast"
+                                                                        : "Hybrid ETA forecast"}
+                                                            </p>
+
+                                                            <p className="mt-1 text-xs text-slate-500">
+                                                                Engine:{" "}
+                                                                {
+                                                                    prediction.model
+                                                                        .prediction_engine
+                                                                }
+                                                            </p>
+                                                        </div>
+
+                                                        <div>
+                                                            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                                                Prediction logic
+                                                            </p>
+
+                                                            <p className="mt-1 text-xs leading-5 text-slate-600">
+                                                                {prediction.station.stations_ahead === 1
+                                                                    ? "Uses the latest observed train movement and recent delay pattern for the immediate next station."
+                                                                    : "Uses the current delay trend and guarded delay propagation for stations further ahead."}
+                                                            </p>
+                                                        </div>
+
+                                                        {prediction.explanation && (
+                                                            <div className="md:col-span-2">
+                                                                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                                                    Technical note
+                                                                </p>
+
+                                                                <p className="mt-1 text-xs leading-5 text-slate-600">
+                                                                    {prediction.explanation}
+                                                                </p>
+                                                            </div>
+                                                        )}
+
+                                                        {prediction.comparison_only
+                                                            .provider_eta && (
+                                                                <div className="md:col-span-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3.5">
+                                                                    <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                                                                        External provider reference
+                                                                    </p>
+
+                                                                    <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2">
+                                                                        <p className="text-sm font-semibold text-slate-900">
+                                                                            {new Date(
+                                                                                prediction.comparison_only
+                                                                                    .provider_eta,
+                                                                            ).toLocaleTimeString(
+                                                                                "en-IN",
+                                                                                {
+                                                                                    hour: "2-digit",
+                                                                                    minute: "2-digit",
+                                                                                    hour12: true,
+                                                                                },
+                                                                            )}
+                                                                        </p>
+
+                                                                        {prediction.comparison_only
+                                                                            .provider_delay_min !=
+                                                                            null && (
+                                                                                <span className="text-xs text-slate-500">
+                                                                                    Provider delay:{" "}
+                                                                                    <strong className="font-semibold text-slate-700">
+                                                                                        {
+                                                                                            prediction
+                                                                                                .comparison_only
+                                                                                                .provider_delay_min
+                                                                                        }{" "}
+                                                                                        min
+                                                                                    </strong>
+                                                                                </span>
+                                                                            )}
+                                                                    </div>
+
+                                                                    <p className="mt-2 text-[11px] leading-5 text-slate-500">
+                                                                        Reference only — this value is not used
+                                                                        as the RailETA model prediction.
+                                                                    </p>
+                                                                </div>
+                                                            )}
+                                                    </div>
+                                                </details>
+                                            </article>
+                                        );
+                                    },
+                                )}
+                            </div>
+
+                        </div>
+                    )}
+
+                </section>
             )}
         </section>
 

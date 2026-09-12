@@ -57,3 +57,9 @@ class InvalidJourneyStateError(RailETAError):
     code = "INVALID_JOURNEY_STATE"
     status_code = 422
     retryable = False
+
+
+class TrainNotScheduledError(RailETAError):
+    code = "TRAIN_NOT_SCHEDULED"
+    status_code = 422
+    retryable = False
