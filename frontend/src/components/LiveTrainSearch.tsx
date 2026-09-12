@@ -99,7 +99,7 @@ export default function LiveTrainSearch({
     const [
         refreshSeconds,
         setRefreshSeconds,
-    ] = useState(60);
+    ] = useState(180);
 
     const [
         demoLoading,
@@ -126,6 +126,11 @@ export default function LiveTrainSearch({
         trainSearchLoading,
         setTrainSearchLoading,
     ] = useState(false);
+
+    const [
+        trainSearchError,
+        setTrainSearchError,
+    ] = useState<string | null>(null);
 
     const [
         showDetailedPredictions,
@@ -204,8 +209,9 @@ export default function LiveTrainSearch({
         const query =
             searchQuery.trim();
 
-        if (query.length < 2) {
+        if (query.length < 3) {
             setTrainSearchResults([]);
+            setTrainSearchError(null);
             return;
         }
 
@@ -213,6 +219,8 @@ export default function LiveTrainSearch({
             async () => {
                 try {
                     setTrainSearchLoading(true);
+                    setTrainSearchError(null);
+
 
                     const response =
                         await railEtaApi.searchTrains(
@@ -225,11 +233,14 @@ export default function LiveTrainSearch({
                     );
                 } catch {
                     setTrainSearchResults([]);
+                    setTrainSearchError(
+                        "Train search is temporarily unavailable. You can still enter the 5-digit train number directly.",
+                    );
                 } finally {
                     setTrainSearchLoading(false);
                 }
             },
-            300,
+            800,
         );
 
         return () => {
@@ -640,11 +651,11 @@ export default function LiveTrainSearch({
             || isWaitingForObservations
             || !trainNumber.trim()
         ) {
-            setRefreshSeconds(60);
+            setRefreshSeconds(180);
             return;
         }
 
-        setRefreshSeconds(60);
+        setRefreshSeconds(180);
 
         const intervalId =
             window.setInterval(
@@ -665,10 +676,10 @@ export default function LiveTrainSearch({
                     } catch {
                         // Keep the last successful forecast visible.
                     } finally {
-                        setRefreshSeconds(60);
+                        setRefreshSeconds(180);
                     }
                 },
-                60_000,
+                180_000,
             );
 
         return () => {
@@ -779,6 +790,12 @@ export default function LiveTrainSearch({
                             </p>
                         )}
 
+                        {trainSearchError && !trainSearchLoading && (
+                            <p className="mt-1.5 text-xs leading-5 text-amber-700">
+                                {trainSearchError}
+                            </p>
+                        )}
+
                         {trainSearchResults.length > 0 && (
                             <div className="absolute z-50 mt-2 max-h-80 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl">
                                 {trainSearchResults.map(
@@ -800,6 +817,8 @@ export default function LiveTrainSearch({
                                                 setTrainSearchResults(
                                                     [],
                                                 );
+
+                                                setTrainSearchError(null);
                                             }}
                                             className="flex w-full flex-col border-b border-slate-100 px-4 py-3 text-left transition last:border-b-0 hover:bg-slate-50"
                                         >
@@ -1247,10 +1266,10 @@ export default function LiveTrainSearch({
                                 </div>
                             ) : (
                                 /* Running Journey */
-                               <div className="grid items-start gap-4 xl:grid-cols-[0.85fr_1.35fr_1fr]">
+                                <div className="grid items-start gap-4 xl:grid-cols-[0.85fr_1.35fr_1fr]">
 
                                     {/* Current journey state */}
-                                   <div className="rounded-2xl border border-slate-200 bg-white p-5">
+                                    <div className="rounded-2xl border border-slate-200 bg-white p-5">
                                         <div className="flex items-center justify-between gap-3">
                                             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
                                                 Current journey
