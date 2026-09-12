@@ -1247,7 +1247,7 @@ export default function LiveTrainSearch({
                                 </div>
                             ) : (
                                 /* Running Journey */
-                                <div className="grid gap-4 xl:grid-cols-[0.85fr_1.35fr_1fr]">
+                               <div className="grid items-start gap-4 xl:grid-cols-[0.85fr_1.35fr_1fr]">
 
                                     {/* Current journey state */}
                                    <div className="rounded-2xl border border-slate-200 bg-white p-5">

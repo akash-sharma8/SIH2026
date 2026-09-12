@@ -21,7 +21,7 @@ export default function Home() {
         refreshSeconds={refreshSeconds}
       />
 
-      <div className="mx-auto max-w-5xl px-4 pb-10 pt-12 sm:px-6 lg:pt-14">
+      <div className="mx-auto max-w-[1480px] px-4 py-8 sm:px-6 lg:px-8">
 
         {/* Hero */}
         <section className="text-center">

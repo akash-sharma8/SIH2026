@@ -178,7 +178,7 @@ export default function EtaPredictionTrend({
                 ) : (
                     <svg
                         viewBox={`0 0 ${width} ${height}`}
-                        className="h-[190px] w-full"
+                        className="h-[135px] w-full"
                         role="img"
                         aria-label="ETA prediction trend"
                     >
