@@ -524,7 +524,53 @@ export default function ControlRoomPage() {
             highDelay,
         };
     }, [monitoredTrains]);
+    const sortedMonitoredTrains =
+        useMemo(() => {
+            return [...monitoredTrains].sort(
+                (a, b) => {
+                    function priority(
+                        item: MonitoredTrain,
+                    ) {
+                        const result = item.result;
 
+                        if (!result) {
+                            return 0;
+                        }
+
+                        const next =
+                            result.predictions?.[0]
+                            ?? null;
+
+                        const delay =
+                            next?.forecast
+                                .predicted_delay_min
+                            ?? result.journey
+                                .current_delay_min
+                            ?? null;
+
+                        const hasAlerts =
+                            (result.alerts?.length ?? 0) > 0;
+
+                        if (
+                            hasAlerts
+                            || (
+                                delay != null
+                                && delay >= 30
+                            )
+                        ) {
+                            return 2;
+                        }
+
+                        return 1;
+                    }
+
+                    return (
+                        priority(b)
+                        - priority(a)
+                    );
+                },
+            );
+        }, [monitoredTrains]);
 
     return (
         <main className="min-h-screen bg-[#f7f9fb] text-slate-950">
@@ -848,366 +894,398 @@ export default function ControlRoomPage() {
 
 
                 {/* Monitored trains */}
-{monitoredTrains.length > 0 && (
-  <section className="mt-6 space-y-4">
+                {monitoredTrains.length > 0 && (
+                    <section className="mt-6 space-y-4">
 
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">
-          Live operations board
-        </p>
-
-        <h2 className="mt-1 text-lg font-bold text-slate-950">
-          Monitored journeys
-        </h2>
-
-        <p className="mt-1 text-sm text-slate-500">
-          Current location, next ETA, delay risk and service alerts.
-        </p>
-      </div>
-
-      <span className="w-fit rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-600">
-        {monitoredTrains.length} trains
-      </span>
-    </div>
-
-    <div className="grid gap-4 xl:grid-cols-2">
-      {monitoredTrains.map(
-        (item) => {
-          const result = item.result;
-
-          const nextPrediction =
-            result?.predictions?.[0] ?? null;
-
-          const scheduled =
-            result?.journey.state_source ===
-            "SCHEDULED_NOT_STARTED";
-
-          const completed =
-            result !== null &&
-            result !== undefined &&
-            (
-              result.journey.upcoming_stations === 0 ||
-              result.journey.state_source ===
-              "NORMALIZED_LIVE_JOURNEY_NO_UPCOMING_STATIONS"
-            );
-
-          const delay =
-            nextPrediction?.forecast.predicted_delay_min
-            ?? result?.journey.current_delay_min
-            ?? null;
-
-          const confidence =
-            nextPrediction?.forecast.confidence
-            ?? null;
-
-          const positionSource =
-            result?.route?.current_position
-              ?.position_source
-            ?? null;
-
-          return (
-            <article
-              key={item.trainNumber}
-              className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
-            >
-
-              {/* Header */}
-              <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="truncate text-lg font-bold text-slate-950">
-                      {item.trainName}
-                    </h3>
-
-                    {result && (
-                      <span
-                        className={[
-                          "rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase",
-                          completed
-                            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                            : scheduled
-                              ? "border-amber-200 bg-amber-50 text-amber-700"
-                              : "border-sky-200 bg-sky-50 text-sky-700",
-                        ].join(" ")}
-                      >
-                        {completed
-                          ? "Completed"
-                          : scheduled
-                            ? "Scheduled"
-                            : "Running"}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
-                    <span>{item.trainNumber}</span>
-
-                    <span className="text-slate-300">
-                      •
-                    </span>
-
-                    <span>
-                      Journey:{" "}
-                      {item.journeyDate === getTodayLocalDate()
-                        ? "Today"
-                        : item.journeyDate}
-                    </span>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    removeTrain(
-                      item.trainNumber,
-                    )
-                  }
-                  className="shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
-                >
-                  Remove
-                </button>
-              </div>
-
-              {/* Loading */}
-              {item.loading && (
-                <div className="px-5 py-6">
-                  <div className="flex items-center gap-2 text-sm text-slate-500">
-                    <span className="h-2 w-2 animate-pulse rounded-full bg-sky-500" />
-                    Loading live forecast...
-                  </div>
-                </div>
-              )}
-
-              {/* Error */}
-              {item.error &&
-                !item.loading && (
-                  <div className="p-5">
-                    <div className="rounded-xl border border-rose-200 bg-rose-50 p-4">
-                      <p className="font-semibold text-rose-800">
-                        Unable to load train
-                      </p>
-
-                      <p className="mt-1 text-sm leading-6 text-rose-700">
-                        {item.error}
-                      </p>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          refreshTrain(
-                            item.trainNumber,
-                            item.journeyDate,
-                          )
-                        }
-                        className="mt-3 rounded-lg bg-rose-700 px-3 py-2 text-xs font-semibold text-white transition hover:bg-rose-800"
-                      >
-                        Retry
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-              {/* Loaded state */}
-              {result &&
-                !item.loading && (
-                  <div>
-
-                    {/* Alerts */}
-                    {result.alerts?.length > 0 && (
-                      <div className="space-y-2 border-b border-slate-100 px-5 py-4">
-                        {result.alerts.map(
-                          (
-                            alert,
-                            index,
-                          ) => {
-                            const critical =
-                              alert.severity ===
-                              "CRITICAL";
-
-                            return (
-                              <div
-                                key={`${alert.type}-${index}`}
-                                className={[
-                                  "rounded-xl border px-3 py-2.5",
-                                  critical
-                                    ? "border-rose-200 bg-rose-50"
-                                    : "border-amber-200 bg-amber-50",
-                                ].join(" ")}
-                              >
-                                <div className="flex flex-wrap items-center justify-between gap-2">
-                                  <p
-                                    className={[
-                                      "text-[10px] font-semibold uppercase tracking-[0.12em]",
-                                      critical
-                                        ? "text-rose-700"
-                                        : "text-amber-700",
-                                    ].join(" ")}
-                                  >
-                                    {alert.title}
-                                  </p>
-
-                                  <span
-                                    className={[
-                                      "rounded-full px-2 py-0.5 text-[9px] font-bold uppercase",
-                                      critical
-                                        ? "bg-rose-600 text-white"
-                                        : "bg-amber-500 text-white",
-                                    ].join(" ")}
-                                  >
-                                    {alert.severity}
-                                  </span>
-                                </div>
-
-                                <p className="mt-1 text-xs leading-5 text-slate-600">
-                                  {alert.message}
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">
+                                    Live operations board
                                 </p>
-                              </div>
-                            );
-                          },
-                        )}
-                      </div>
-                    )}
 
-                    {/* Operational metrics */}
-                    <div className="grid gap-px border-b border-slate-100 bg-slate-100 sm:grid-cols-2 lg:grid-cols-4">
-                      <div className="bg-white p-4">
-                        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                          Current
-                        </p>
+                                <h2 className="mt-1 text-lg font-bold text-slate-950">
+                                    Monitored journeys
+                                </h2>
 
-                        <p className="mt-1 text-sm font-semibold text-slate-900">
-                          {result.journey.current_station_name
-                            ?? result.journey.current_station_code
-                            ?? "Unavailable"}
-                        </p>
-                      </div>
+                                <p className="mt-1 text-sm text-slate-500">
+                                    Current location, next ETA, delay risk and service alerts.
+                                </p>
+                            </div>
 
-                      <div className="bg-white p-4">
-                        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                          Next
-                        </p>
+                            <span className="w-fit rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-600">
+                                {monitoredTrains.length} trains
+                            </span>
+                        </div>
 
-                        <p className="mt-1 text-sm font-semibold text-slate-900">
-                          {scheduled
-                            ? "Not started"
-                            : completed
-                              ? "Journey complete"
-                              : nextPrediction?.station.name
-                                ?? nextPrediction?.station.code
-                                ?? "Unavailable"}
-                        </p>
-                      </div>
+                        <div className="grid gap-4 xl:grid-cols-2">
+                            {sortedMonitoredTrains.map(
+                                (item) => {
+                                    const result = item.result;
 
-                      <div className="bg-white p-4">
-                        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                          ETA
-                        </p>
+                                    const nextPrediction =
+                                        result?.predictions?.[0] ?? null;
 
-                        <p className="mt-1 text-sm font-semibold text-sky-700">
-                          {nextPrediction?.forecast.eta
-                            ? formatTime(
-                                nextPrediction
-                                  .forecast.eta,
-                              )
-                            : "--"}
-                        </p>
-                      </div>
+                                    const scheduled =
+                                        result?.journey.state_source ===
+                                        "SCHEDULED_NOT_STARTED";
 
-                      <div className="bg-white p-4">
-                        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                          Delay
-                        </p>
+                                    const completed =
+                                        result !== null &&
+                                        result !== undefined &&
+                                        (
+                                            result.journey.upcoming_stations === 0 ||
+                                            result.journey.state_source ===
+                                            "NORMALIZED_LIVE_JOURNEY_NO_UPCOMING_STATIONS"
+                                        );
 
-                        <span
-                          className={`mt-1 inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${delayClass(
-                            delay,
-                          )}`}
-                        >
-                          {delayLabel(delay)}
-                        </span>
-                      </div>
-                    </div>
+                                    const delay =
+                                        nextPrediction?.forecast.predicted_delay_min
+                                        ?? result?.journey.current_delay_min
+                                        ?? null;
 
-                    {/* Footer metadata/actions */}
-                    <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                                    const needsAttention =
+                                        (result?.alerts?.length ?? 0) > 0
+                                        || (
+                                            delay != null
+                                            && delay >= 30
+                                        );
 
-                      <div className="flex flex-wrap gap-2">
-                        <span
-                          className={[
-                            "rounded-full border px-2.5 py-1 text-[10px] font-semibold",
-                            confidence === "HIGH"
-                              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                              : confidence === "MEDIUM"
-                                ? "border-amber-200 bg-amber-50 text-amber-700"
-                                : "border-slate-200 bg-slate-50 text-slate-600",
-                          ].join(" ")}
-                        >
-                          {confidence
-                            ? `${confidence} confidence`
-                            : "Confidence unavailable"}
-                        </span>
+                                    const attentionReason =
+                                        (result?.alerts?.length ?? 0) > 0
+                                            ? "Service alert"
+                                            : delay != null && delay >= 30
+                                                ? "Delay ≥ 30 min"
+                                                : null;
 
-                        {positionSource && (
-                          <span
-                            className={[
-                              "rounded-full border px-2.5 py-1 text-[10px] font-semibold",
-                              positionSource === "REAL_PROVIDER_GPS"
-                                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                                : positionSource === "CURRENT_STATION"
-                                  ? "border-sky-200 bg-sky-50 text-sky-700"
-                                  : positionSource === "ESTIMATED_BETWEEN_STATIONS"
-                                    ? "border-amber-200 bg-amber-50 text-amber-700"
-                                    : "border-slate-200 bg-slate-50 text-slate-600",
-                            ].join(" ")}
-                          >
-                            {positionSource ===
-                            "REAL_PROVIDER_GPS"
-                              ? "Live GPS"
-                              : positionSource ===
-                                  "CURRENT_STATION"
-                                ? "Station position"
-                                : positionSource ===
-                                    "ESTIMATED_BETWEEN_STATIONS"
-                                  ? "Estimated position"
-                                  : "Position source"}
-                          </span>
-                        )}
+                                    const confidence =
+                                        nextPrediction?.forecast.confidence
+                                        ?? null;
 
-                        {result.backend
-                          ?.provider_payload_cache && (
-                          <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-semibold text-slate-600">
-                            Cache:{" "}
-                            {
-                              result.backend
-                                .provider_payload_cache
-                            }
-                          </span>
-                        )}
-                      </div>
+                                    const positionSource =
+                                        result?.route?.current_position
+                                            ?.position_source
+                                        ?? null;
 
-                      <button
-                        type="button"
-                        onClick={() =>
-                          refreshTrain(
-                            item.trainNumber,
-                            item.journeyDate,
-                          )
-                        }
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
-                      >
-                        Refresh
-                      </button>
-                    </div>
-                  </div>
+                                    return (
+                                        <article
+                                            key={item.trainNumber}
+                                            className={[
+                                                "overflow-hidden rounded-2xl border bg-white shadow-sm transition",
+                                                needsAttention
+                                                    ? "border-amber-300 ring-1 ring-amber-100"
+                                                    : "border-slate-200",
+                                            ].join(" ")}
+                                        >
+
+                                            {/* Header */}
+                                            <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
+                                                <div className="min-w-0">
+                                                    <div className="flex flex-wrap items-center gap-2">
+
+                                                        <h3 className="truncate text-lg font-bold text-slate-950">
+                                                            {item.trainName}
+                                                        </h3>
+
+                                                        {result && (
+                                                            <span
+                                                                className={[
+                                                                    "rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase",
+                                                                    completed
+                                                                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                                                        : scheduled
+                                                                            ? "border-amber-200 bg-amber-50 text-amber-700"
+                                                                            : "border-sky-200 bg-sky-50 text-sky-700",
+                                                                ].join(" ")}
+                                                            >
+                                                                {completed
+                                                                    ? "Completed"
+                                                                    : scheduled
+                                                                        ? "Scheduled"
+                                                                        : "Running"}
+                                                            </span>
+                                                        )}
+
+                                                        {needsAttention && (
+                                                            <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase text-amber-700">
+                                                                Needs attention
+                                                                {attentionReason && (
+                                                                    <>
+                                                                        {" · "}
+                                                                        {attentionReason}
+                                                                    </>
+                                                                )}
+                                                            </span>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+                                                        <span>{item.trainNumber}</span>
+
+                                                        <span className="text-slate-300">
+                                                            •
+                                                        </span>
+
+                                                        <span>
+                                                            Journey:{" "}
+                                                            {item.journeyDate === getTodayLocalDate()
+                                                                ? "Today"
+                                                                : item.journeyDate}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        removeTrain(
+                                                            item.trainNumber,
+                                                        )
+                                                    }
+                                                    className="shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+                                                >
+                                                    Remove
+                                                </button>
+                                            </div>
+
+                                            {/* Loading */}
+                                            {item.loading && (
+                                                <div className="px-5 py-6">
+                                                    <div className="flex items-center gap-2 text-sm text-slate-500">
+                                                        <span className="h-2 w-2 animate-pulse rounded-full bg-sky-500" />
+                                                        Loading live forecast...
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Error */}
+                                            {item.error &&
+                                                !item.loading && (
+                                                    <div className="p-5">
+                                                        <div className="rounded-xl border border-rose-200 bg-rose-50 p-4">
+                                                            <p className="font-semibold text-rose-800">
+                                                                Unable to load train
+                                                            </p>
+
+                                                            <p className="mt-1 text-sm leading-6 text-rose-700">
+                                                                {item.error}
+                                                            </p>
+
+                                                            <button
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    refreshTrain(
+                                                                        item.trainNumber,
+                                                                        item.journeyDate,
+                                                                    )
+                                                                }
+                                                                className="mt-3 rounded-lg bg-rose-700 px-3 py-2 text-xs font-semibold text-white transition hover:bg-rose-800"
+                                                            >
+                                                                Retry
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                            {/* Loaded state */}
+                                            {result &&
+                                                !item.loading && (
+                                                    <div>
+
+                                                        {/* Alerts */}
+                                                        {result.alerts?.length > 0 && (
+                                                            <div className="space-y-2 border-b border-slate-100 px-5 py-4">
+                                                                {result.alerts.map(
+                                                                    (
+                                                                        alert,
+                                                                        index,
+                                                                    ) => {
+                                                                        const critical =
+                                                                            alert.severity ===
+                                                                            "CRITICAL";
+
+                                                                        return (
+                                                                            <div
+                                                                                key={`${alert.type}-${index}`}
+                                                                                className={[
+                                                                                    "rounded-xl border px-3 py-2.5",
+                                                                                    critical
+                                                                                        ? "border-rose-200 bg-rose-50"
+                                                                                        : "border-amber-200 bg-amber-50",
+                                                                                ].join(" ")}
+                                                                            >
+                                                                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                                                                    <p
+                                                                                        className={[
+                                                                                            "text-[10px] font-semibold uppercase tracking-[0.12em]",
+                                                                                            critical
+                                                                                                ? "text-rose-700"
+                                                                                                : "text-amber-700",
+                                                                                        ].join(" ")}
+                                                                                    >
+                                                                                        {alert.title}
+                                                                                    </p>
+
+                                                                                    <span
+                                                                                        className={[
+                                                                                            "rounded-full px-2 py-0.5 text-[9px] font-bold uppercase",
+                                                                                            critical
+                                                                                                ? "bg-rose-600 text-white"
+                                                                                                : "bg-amber-500 text-white",
+                                                                                        ].join(" ")}
+                                                                                    >
+                                                                                        {alert.severity}
+                                                                                    </span>
+                                                                                </div>
+
+                                                                                <p className="mt-1 text-xs leading-5 text-slate-600">
+                                                                                    {alert.message}
+                                                                                </p>
+                                                                            </div>
+                                                                        );
+                                                                    },
+                                                                )}
+                                                            </div>
+                                                        )}
+
+                                                        {/* Operational metrics */}
+                                                        <div className="grid gap-px border-b border-slate-100 bg-slate-100 sm:grid-cols-2 lg:grid-cols-4">
+                                                            <div className="bg-white p-4">
+                                                                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                                                    Current
+                                                                </p>
+
+                                                                <p className="mt-1 text-sm font-semibold text-slate-900">
+                                                                    {result.journey.current_station_name
+                                                                        ?? result.journey.current_station_code
+                                                                        ?? "Unavailable"}
+                                                                </p>
+                                                            </div>
+
+                                                            <div className="bg-white p-4">
+                                                                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                                                    Next
+                                                                </p>
+
+                                                                <p className="mt-1 text-sm font-semibold text-slate-900">
+                                                                    {scheduled
+                                                                        ? "Not started"
+                                                                        : completed
+                                                                            ? "Journey complete"
+                                                                            : nextPrediction?.station.name
+                                                                            ?? nextPrediction?.station.code
+                                                                            ?? "Unavailable"}
+                                                                </p>
+                                                            </div>
+
+                                                            <div className="bg-white p-4">
+                                                                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                                                    ETA
+                                                                </p>
+
+                                                                <p className="mt-1 text-sm font-semibold text-sky-700">
+                                                                    {nextPrediction?.forecast.eta
+                                                                        ? formatTime(
+                                                                            nextPrediction
+                                                                                .forecast.eta,
+                                                                        )
+                                                                        : "--"}
+                                                                </p>
+                                                            </div>
+
+                                                            <div className="bg-white p-4">
+                                                                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                                                    Delay
+                                                                </p>
+
+                                                                <span
+                                                                    className={`mt-1 inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${delayClass(
+                                                                        delay,
+                                                                    )}`}
+                                                                >
+                                                                    {delayLabel(delay)}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Footer metadata/actions */}
+                                                        <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+
+                                                            <div className="flex flex-wrap gap-2">
+                                                                <span
+                                                                    className={[
+                                                                        "rounded-full border px-2.5 py-1 text-[10px] font-semibold",
+                                                                        confidence === "HIGH"
+                                                                            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                                                            : confidence === "MEDIUM"
+                                                                                ? "border-amber-200 bg-amber-50 text-amber-700"
+                                                                                : "border-slate-200 bg-slate-50 text-slate-600",
+                                                                    ].join(" ")}
+                                                                >
+                                                                    {confidence
+                                                                        ? `${confidence} confidence`
+                                                                        : "Confidence unavailable"}
+                                                                </span>
+
+                                                                {positionSource && (
+                                                                    <span
+                                                                        className={[
+                                                                            "rounded-full border px-2.5 py-1 text-[10px] font-semibold",
+                                                                            positionSource === "REAL_PROVIDER_GPS"
+                                                                                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                                                                : positionSource === "CURRENT_STATION"
+                                                                                    ? "border-sky-200 bg-sky-50 text-sky-700"
+                                                                                    : positionSource === "ESTIMATED_BETWEEN_STATIONS"
+                                                                                        ? "border-amber-200 bg-amber-50 text-amber-700"
+                                                                                        : "border-slate-200 bg-slate-50 text-slate-600",
+                                                                        ].join(" ")}
+                                                                    >
+                                                                        {positionSource ===
+                                                                            "REAL_PROVIDER_GPS"
+                                                                            ? "Live GPS"
+                                                                            : positionSource ===
+                                                                                "CURRENT_STATION"
+                                                                                ? "Station position"
+                                                                                : positionSource ===
+                                                                                    "ESTIMATED_BETWEEN_STATIONS"
+                                                                                    ? "Estimated position"
+                                                                                    : "Position source"}
+                                                                    </span>
+                                                                )}
+
+                                                                {result.backend
+                                                                    ?.provider_payload_cache && (
+                                                                        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-semibold text-slate-600">
+                                                                            Cache:{" "}
+                                                                            {
+                                                                                result.backend
+                                                                                    .provider_payload_cache
+                                                                            }
+                                                                        </span>
+                                                                    )}
+                                                            </div>
+
+                                                            <button
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    refreshTrain(
+                                                                        item.trainNumber,
+                                                                        item.journeyDate,
+                                                                    )
+                                                                }
+                                                                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                                                            >
+                                                                Refresh
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                        </article>
+                                    );
+                                },
+                            )}
+                        </div>
+                    </section>
                 )}
-            </article>
-          );
-        },
-      )}
-    </div>
-  </section>
-)}
             </div>
         </main>
     );

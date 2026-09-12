@@ -2,8 +2,10 @@
 
 import {
     useEffect,
+    useRef,
     useState,
 } from "react";
+
 import AppNavbar from "@/components/AppNavbar";
 import {
     railEtaApi,
@@ -12,6 +14,20 @@ import type {
     LiveForecastResponse,
     TrainSearchResult,
 } from "@/lib/api/api-types";
+
+
+
+type RecentStationTrain = {
+    trainNumber: string;
+    trainName: string;
+    journeyDate: string;
+    currentStation: string | null;
+    nextStation: string | null;
+    predictedEta: string | null;
+    delayMin: number | null;
+    confidence: string | null;
+    searchedAt: string;
+};
 
 function formatTime(value?: string | null) {
     if (!value) {
@@ -54,7 +70,14 @@ export default function StationDisplayPage() {
         useState<LiveForecastResponse | null>(
             null,
         );
-
+    const [
+        recentTrains,
+        setRecentTrains,
+    ] = useState<RecentStationTrain[]>(
+        [],
+    );
+    const resultSectionRef =
+        useRef<HTMLDivElement | null>(null);
     const [
         journeyDate,
         setJourneyDate,
@@ -165,6 +188,115 @@ export default function StationDisplayPage() {
                 });
 
             setResult(response);
+
+            const prediction =
+                response.predictions?.[0]
+                ?? null;
+
+            const recentEntry:
+                RecentStationTrain = {
+                trainNumber:
+                    response.journey.train_number,
+
+                trainName:
+                    response.journey.train_name
+                    ?? "Train",
+
+                journeyDate,
+
+                currentStation:
+                    response.journey
+                        .current_station_name
+                    ?? response.journey
+                        .current_station_code
+                    ?? null,
+
+                nextStation:
+                    prediction?.station.name
+                    ?? prediction?.station.code
+                    ?? null,
+
+                predictedEta:
+                    prediction?.forecast.eta
+                    ?? null,
+
+                delayMin:
+                    prediction?.forecast
+                        .predicted_delay_min
+                    ?? response.journey
+                        .current_delay_min
+                    ?? null,
+
+                confidence:
+                    prediction?.forecast
+                        .confidence
+                    ?? null,
+
+                searchedAt:
+                    new Date().toISOString(),
+            };
+
+            setRecentTrains((current) => {
+                const withoutDuplicate =
+                    current.filter(
+                        (item) =>
+                            !(
+                                item.trainNumber
+                                === recentEntry.trainNumber
+                                && item.journeyDate
+                                === recentEntry.journeyDate
+                            ),
+                    );
+
+                const next = [
+                    recentEntry,
+                    ...withoutDuplicate,
+                ].slice(0, 5);
+
+                window.localStorage.setItem(
+                    "raileta-station-recent-trains",
+                    JSON.stringify(next),
+                );
+
+                return next;
+            });
+        } catch (err) {
+            setError(
+                err instanceof Error
+                    ? err.message
+                    : "Unable to load train data.",
+            );
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function openRecentTrain(
+        train: RecentStationTrain,
+    ) {
+        setTrainNumber(train.trainNumber);
+        setJourneyDate(train.journeyDate);
+        setQuery(
+            `${train.trainNumber} — ${train.trainName}`,
+        );
+
+        setLoading(true);
+        setError(null);
+
+        try {
+            const response =
+                await railEtaApi.getLiveForecast({
+                    train_number: train.trainNumber,
+                    journey_date: train.journeyDate,
+                });
+
+            setResult(response);
+            window.setTimeout(() => {
+                resultSectionRef.current?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                });
+            }, 100);
         } catch (err) {
             setError(
                 err instanceof Error
@@ -195,6 +327,10 @@ export default function StationDisplayPage() {
     const isScheduled =
         result?.journey.state_source
         === "SCHEDULED_NOT_STARTED";
+
+    const timelineStations =
+        result?.journey.timeline?.stations
+        ?? [];
 
     return (
         <main className="min-h-screen bg-[#f7f9fb] text-slate-950">
@@ -361,6 +497,109 @@ export default function StationDisplayPage() {
                     </div>
                 </section>
 
+                {recentTrains.length > 0 && (
+                    <section className="mt-6">
+                        <div className="mb-3 flex items-end justify-between">
+                            <div>
+                                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">
+                                    Recent journeys
+                                </p>
+
+                                <h2 className="mt-1 text-xl font-bold text-slate-950">
+                                    Recently searched trains
+                                </h2>
+
+                                <p className="mt-1 text-sm text-slate-500">
+                                    Select a train to open its complete journey and station timeline.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="grid gap-3 lg:grid-cols-2">
+                            {recentTrains.map((train) => (
+                                <button
+                                    key={`${train.trainNumber}-${train.journeyDate}`}
+                                    type="button"
+                                    onClick={() => openRecentTrain(train)}
+                                    className={[
+                                        "group rounded-2xl border bg-white p-5 text-left shadow-sm transition",
+                                        train.trainNumber === result?.journey.train_number
+                                            && train.journeyDate === journeyDate
+                                            ? "border-sky-400 ring-2 ring-sky-100"
+                                            : "border-slate-200 hover:border-sky-300 hover:shadow-md",
+                                    ].join(" ")}
+                                >
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div>
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <h3 className="text-lg font-bold text-slate-950">
+                                                    {train.trainName}
+                                                </h3>
+
+                                                <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-600">
+                                                    {train.trainNumber}
+                                                </span>
+                                            </div>
+
+                                            <p className="mt-2 text-sm text-slate-500">
+                                                Current:{" "}
+                                                <strong className="text-slate-700">
+                                                    {train.currentStation ?? "Unavailable"}
+                                                </strong>
+                                            </p>
+
+                                            <p className="mt-1 text-sm text-slate-500">
+                                                Next:{" "}
+                                                <strong className="text-slate-700">
+                                                    {train.nextStation ?? "Completed"}
+                                                </strong>
+                                            </p>
+                                        </div>
+
+                                        <span className="shrink-0 text-sm font-semibold text-sky-700">
+                                            View journey →
+                                        </span>
+                                    </div>
+
+                                    <div className="mt-4 grid grid-cols-3 gap-3 border-t border-slate-100 pt-4">
+                                        <div>
+                                            <p className="text-[10px] uppercase tracking-wide text-slate-400">
+                                                ETA
+                                            </p>
+
+                                            <p className="mt-1 font-bold text-slate-900">
+                                                {formatTime(train.predictedEta)}
+                                            </p>
+                                        </div>
+
+                                        <div>
+                                            <p className="text-[10px] uppercase tracking-wide text-slate-400">
+                                                Delay
+                                            </p>
+
+                                            <p className="mt-1 font-bold text-rose-700">
+                                                {train.delayMin != null
+                                                    ? `${train.delayMin > 0 ? "+" : ""}${train.delayMin.toFixed(1)} min`
+                                                    : "--"}
+                                            </p>
+                                        </div>
+
+                                        <div>
+                                            <p className="text-[10px] uppercase tracking-wide text-slate-400">
+                                                Confidence
+                                            </p>
+
+                                            <p className="mt-1 font-bold capitalize text-slate-900">
+                                                {train.confidence ?? "--"}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    </section>
+                )}
+
                 {error && (
                     <div className="mt-6 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
                         {error}
@@ -383,7 +622,10 @@ export default function StationDisplayPage() {
                 )}
 
                 {result && (
-                    <div className="mt-8 space-y-6">
+                    <div
+                        ref={resultSectionRef}
+                        className="mt-8 space-y-6 scroll-mt-20"
+                    >
 
                         {/* Train summary */}
                         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -656,7 +898,7 @@ export default function StationDisplayPage() {
                                             </h3>
 
                                             <p className="mt-1 text-sm text-slate-500">
-                                                Predicted arrivals for all remaining stations on this journey.
+                                                Forward-looking ETA predictions for the remaining stations only.
                                             </p>
                                         </div>
 
@@ -826,6 +1068,98 @@ export default function StationDisplayPage() {
                                     </div>
                                 </section>
                             )}
+
+
+                        {timelineStations.length > 0 && (
+                            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                                <div className="border-b border-slate-100 px-5 py-4 sm:px-6">
+                                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">
+                                        Complete journey
+                                    </p>
+
+                                    <h3 className="mt-1 text-lg font-bold text-slate-950">
+                                        All scheduled stations
+                                    </h3>
+
+                                    <p className="mt-1 text-sm text-slate-500">
+                                        Full route timeline showing passed, current, next and upcoming stations.
+                                    </p>
+                                </div>
+
+                                <div className="max-h-[620px] overflow-y-auto">
+                                    {timelineStations.map(
+                                        (station, index) => (
+                                            <div
+                                                key={`${station.station_code}-${index}`}
+                                                className="grid gap-3 border-b border-slate-100 px-5 py-4 last:border-b-0 sm:grid-cols-[minmax(0,1.5fr)_120px_110px_90px] sm:px-6"
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <span
+                                                        className={[
+                                                            "h-2.5 w-2.5 shrink-0 rounded-full",
+                                                            station.status === "PASSED"
+                                                                ? "bg-emerald-500"
+                                                                : station.status === "CURRENT"
+                                                                    ? "bg-sky-500"
+                                                                    : station.status === "NEXT"
+                                                                        ? "bg-amber-500"
+                                                                        : "bg-slate-300",
+                                                        ].join(" ")}
+                                                    />
+
+                                                    <div>
+                                                        <p className="font-semibold text-slate-950">
+                                                            {station.station_name
+                                                                ?? station.station_code}
+                                                        </p>
+
+                                                        <p className="text-xs text-slate-400">
+                                                            {station.station_code}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <p className="text-[10px] uppercase tracking-wide text-slate-400">
+                                                        Arrival
+                                                    </p>
+
+                                                    <p className="mt-1 text-sm font-semibold text-slate-900">
+                                                        {formatTime(
+                                                            station.actual_arrival
+                                                            ?? station.predicted_arrival
+                                                            ?? station.scheduled_arrival,
+                                                        )}
+                                                    </p>
+                                                </div>
+
+                                                <div>
+                                                    <p className="text-[10px] uppercase tracking-wide text-slate-400">
+                                                        Delay
+                                                    </p>
+
+                                                    <p className="mt-1 text-sm font-semibold text-slate-900">
+                                                        {station.delay_min != null
+                                                            ? `${station.delay_min > 0 ? "+" : ""}${station.delay_min} min`
+                                                            : "--"}
+                                                    </p>
+                                                </div>
+
+                                                <div>
+                                                    <p className="text-[10px] uppercase tracking-wide text-slate-400">
+                                                        Platform
+                                                    </p>
+
+                                                    <p className="mt-1 text-sm font-semibold text-slate-900">
+                                                        {station.platform ?? "--"}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        ),
+                                    )}
+                                </div>
+                            </section>
+                        )}
 
                         {/* Disruption alerts */}
                         {result.alerts &&

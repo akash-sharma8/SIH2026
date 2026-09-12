@@ -437,10 +437,10 @@ export default function ModelIntelligencePage() {
                             Production model performance
                         </h2>
 
-                        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
-                            Metrics below are prediction errors measured in minutes.
-                            Lower values indicate predictions closer to the observed outcome.
-                            These values are not accuracy percentages.
+                        <p className="mt-2 max-w-3xl text-xs leading-5 text-slate-400">
+                            Model 2 and Model 3 serve different forecast horizons and were
+                            evaluated on different sample sets, so their metrics should not
+                            be interpreted as a direct head-to-head comparison.
                         </p>
                     </div>
 
@@ -467,9 +467,15 @@ export default function ModelIntelligencePage() {
                                             </p>
                                         </div>
 
-                                        <span className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-semibold text-slate-600">
-                                            {model.engine}
-                                        </span>
+                                        <div className="flex shrink-0 flex-col items-end gap-2">
+                                            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-semibold text-slate-600">
+                                                {model.engine}
+                                            </span>
+
+                                            <span className="text-[10px] font-medium text-slate-400">
+                                                n = {model.samples.toLocaleString("en-IN")}
+                                            </span>
+                                        </div>
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-px bg-slate-100 sm:grid-cols-4">
@@ -501,7 +507,7 @@ export default function ModelIntelligencePage() {
 
                                         <div className="bg-white p-4">
                                             <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                                                Median
+                                                Median error
                                             </p>
 
                                             <p className="mt-1.5 text-xl font-bold text-slate-950">
@@ -526,18 +532,7 @@ export default function ModelIntelligencePage() {
                                         </div>
                                     </div>
 
-                                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/60 px-5 py-3">
-                                        <span className="text-[11px] text-slate-500">
-                                            Evaluation samples:{" "}
-                                            <strong className="font-semibold text-slate-700">
-                                                {model.samples.toLocaleString("en-IN")}
-                                            </strong>
-                                        </span>
-
-                                        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold text-emerald-700">
-                                            Production runtime
-                                        </span>
-                                    </div>
+              
                                 </article>
                             ))}
                     </div>
@@ -606,7 +601,7 @@ export default function ModelIntelligencePage() {
 
                                     <div className="rounded-xl bg-slate-50 p-3">
                                         <p className="text-[10px] uppercase tracking-wide text-slate-400">
-                                            P90
+                                            P90 error
                                         </p>
                                         <p className="mt-1 font-bold text-slate-900">
                                             {model.p90.toFixed(2)} min

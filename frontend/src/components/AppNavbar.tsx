@@ -1,5 +1,6 @@
 "use client";
-
+import { useEffect, useRef } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -9,12 +10,26 @@ type AppNavbarProps = {
     | "Station staff"
     | "Control room"
     | "Model intelligence";
+
+    refreshSeconds?: number | null;
 };
 
 export default function AppNavbar({
     role = "Passenger",
+    refreshSeconds = null,
 }: AppNavbarProps) {
+
     const pathname = usePathname();
+
+    const [
+        roleMenuOpen,
+        setRoleMenuOpen,
+    ] = useState(false);
+
+    const [
+        mobileMenuOpen,
+        setMobileMenuOpen,
+    ] = useState(false);
 
     function navClass(path: string) {
         const active =
@@ -27,6 +42,81 @@ export default function AppNavbar({
                 : "text-slate-400 hover:bg-slate-800 hover:text-white",
         ].join(" ");
     }
+
+    const roleMenuRef =
+        useRef<HTMLDivElement | null>(null);
+
+    const mobileMenuButtonRef =
+        useRef<HTMLButtonElement | null>(null);
+
+    const mobileMenuPanelRef =
+        useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        function handlePointerDown(
+            event: MouseEvent,
+        ) {
+            const target =
+                event.target as Node;
+
+            if (
+                roleMenuRef.current
+                && !roleMenuRef.current.contains(
+                    target,
+                )
+            ) {
+                setRoleMenuOpen(false);
+            }
+
+            const clickedMobileButton =
+                mobileMenuButtonRef.current
+                    ?.contains(target)
+                ?? false;
+
+            const clickedMobilePanel =
+                mobileMenuPanelRef.current
+                    ?.contains(target)
+                ?? false;
+
+            if (
+                !clickedMobileButton
+                && !clickedMobilePanel
+            ) {
+                setMobileMenuOpen(false);
+            }
+        }
+
+        function handleKeyDown(
+            event: KeyboardEvent,
+        ) {
+            if (event.key === "Escape") {
+                setRoleMenuOpen(false);
+                setMobileMenuOpen(false);
+            }
+        }
+
+        document.addEventListener(
+            "mousedown",
+            handlePointerDown,
+        );
+
+        document.addEventListener(
+            "keydown",
+            handleKeyDown,
+        );
+
+        return () => {
+            document.removeEventListener(
+                "mousedown",
+                handlePointerDown,
+            );
+
+            document.removeEventListener(
+                "keydown",
+                handleKeyDown,
+            );
+        };
+    }, []);
 
     return (
         <header className="sticky top-0 z-[1000] border-b border-slate-800 bg-[#111c2c]">
@@ -169,34 +259,219 @@ export default function AppNavbar({
 
                 {/* Right status */}
                 <div className="flex items-center gap-2">
+                    <button
+                        ref={mobileMenuButtonRef}
+                        type="button"
+                        onClick={() =>
+                            setMobileMenuOpen(
+                                (open) => !open,
+                            )
+                        }
+                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 text-slate-300 transition hover:bg-slate-800 md:hidden"
+                        aria-label="Toggle navigation"
+                    >
+                        <svg
+                            viewBox="0 0 24 24"
+                            className="h-4 w-4"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                        >
+                            {mobileMenuOpen ? (
+                                <>
+                                    <path d="M6 6l12 12" />
+                                    <path d="M18 6L6 18" />
+                                </>
+                            ) : (
+                                <>
+                                    <path d="M4 7h16" />
+                                    <path d="M4 12h16" />
+                                    <path d="M4 17h16" />
+                                </>
+                            )}
+                        </svg>
+                    </button>
                     <div className="hidden items-center gap-2 rounded-full border border-slate-700 px-3 py-1.5 text-xs text-slate-400 sm:flex">
                         <span className="h-2 w-2 rounded-full bg-sky-500" />
 
                         <span className="font-semibold text-white">
                             LIVE
                         </span>
+
+                        {refreshSeconds != null && (
+                            <>
+                                <span className="text-slate-600">
+                                    •
+                                </span>
+
+                                <span>
+                                    Auto refresh in{" "}
+                                    <strong className="font-semibold text-slate-200">
+                                        {refreshSeconds}s
+                                    </strong>
+                                </span>
+                            </>
+                        )}
                     </div>
 
-                    <div className="flex items-center gap-2 rounded-full border border-slate-700 px-3 py-1.5 text-xs font-medium text-white">
-                        <svg
-                            viewBox="0 0 24 24"
-                            className="h-4 w-4 text-slate-400"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.8"
+                    <div
+                        ref={roleMenuRef}
+                        className="relative"
+                    >
+                        <button
+                            type="button"
+                            onClick={() =>
+                                setRoleMenuOpen(
+                                    (open) => !open,
+                                )
+                            }
+                            className="flex items-center gap-2 rounded-full border border-slate-700 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-slate-800"
                         >
-                            <circle
-                                cx="12"
-                                cy="8"
-                                r="3"
-                            />
-                            <path d="M6 20c.5-4 2.5-6 6-6s5.5 2 6 6" />
-                        </svg>
+                            <svg
+                                viewBox="0 0 24 24"
+                                className="h-4 w-4 text-slate-400"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="1.8"
+                            >
+                                <circle
+                                    cx="12"
+                                    cy="8"
+                                    r="3"
+                                />
+                                <path d="M6 20c.5-4 2.5-6 6-6s5.5 2 6 6" />
+                            </svg>
 
-                        {role}
+                            {role}
+
+                            <svg
+                                viewBox="0 0 24 24"
+                                className={[
+                                    "h-3.5 w-3.5 text-slate-400 transition-transform",
+                                    roleMenuOpen
+                                        ? "rotate-180"
+                                        : "",
+                                ].join(" ")}
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                            >
+                                <path d="m6 9 6 6 6-6" />
+                            </svg>
+                        </button>
+
+                        {roleMenuOpen && (
+                            <div className="absolute right-0 top-full z-[1100] mt-2 w-52 overflow-hidden rounded-xl border border-slate-700 bg-[#172235] p-2 shadow-xl">
+                                <p className="px-3 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                                    Switch role view
+                                </p>
+
+                                <Link
+                                    href="/"
+                                    onClick={() =>
+                                        setRoleMenuOpen(false)
+                                    }
+                                    className="flex items-center justify-between rounded-lg px-3 py-2 text-sm text-slate-200 transition hover:bg-slate-700"
+                                >
+                                    Passenger
+
+                                    {role === "Passenger" && (
+                                        <span className="text-sky-400">
+                                            ✓
+                                        </span>
+                                    )}
+                                </Link>
+
+                                <Link
+                                    href="/station-display"
+                                    onClick={() =>
+                                        setRoleMenuOpen(false)
+                                    }
+                                    className="flex items-center justify-between rounded-lg px-3 py-2 text-sm text-slate-200 transition hover:bg-slate-700"
+                                >
+                                    Station staff
+
+                                    {role === "Station staff" && (
+                                        <span className="text-sky-400">
+                                            ✓
+                                        </span>
+                                    )}
+                                </Link>
+
+                                <Link
+                                    href="/control-room"
+                                    onClick={() =>
+                                        setRoleMenuOpen(false)
+                                    }
+                                    className="flex items-center justify-between rounded-lg px-3 py-2 text-sm text-slate-200 transition hover:bg-slate-700"
+                                >
+                                    Control room
+
+                                    {role === "Control room" && (
+                                        <span className="text-sky-400">
+                                            ✓
+                                        </span>
+                                    )}
+                                </Link>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
+            {mobileMenuOpen && (
+                <div
+                    ref={mobileMenuPanelRef}
+                    className="border-t border-slate-800 bg-[#111c2c] px-4 py-3 md:hidden"
+                >
+                    <nav className="mx-auto flex max-w-7xl flex-col gap-1">
+                        <Link
+                            href="/"
+                            onClick={() =>
+                                setMobileMenuOpen(false)
+                            }
+                            className={navClass("/")}
+                        >
+                            Live train
+                        </Link>
+
+                        <Link
+                            href="/model-intelligence"
+                            onClick={() =>
+                                setMobileMenuOpen(false)
+                            }
+                            className={navClass(
+                                "/model-intelligence",
+                            )}
+                        >
+                            Model intelligence
+                        </Link>
+
+                        <Link
+                            href="/station-display"
+                            onClick={() =>
+                                setMobileMenuOpen(false)
+                            }
+                            className={navClass(
+                                "/station-display",
+                            )}
+                        >
+                            Station board
+                        </Link>
+
+                        <Link
+                            href="/control-room"
+                            onClick={() =>
+                                setMobileMenuOpen(false)
+                            }
+                            className={navClass(
+                                "/control-room",
+                            )}
+                        >
+                            Operations
+                        </Link>
+                    </nav>
+                </div>
+            )}
         </header>
     );
 }

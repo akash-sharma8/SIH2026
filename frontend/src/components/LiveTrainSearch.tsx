@@ -10,6 +10,9 @@ import {
     TrainAlertBanner,
 } from "@/components/TrainAlertBanner";
 
+import EtaPredictionTrend, {
+    type EtaHistoryPoint,
+} from "@/components/EtaPredictionTrend";
 
 import { JourneyTimeline } from "@/components/JourneyTimeline";
 import {
@@ -26,7 +29,11 @@ import type {
 } from "@/lib/api/api-types";
 
 import dynamic from "next/dynamic";
-
+type LiveTrainSearchProps = {
+    onRefreshSecondsChange?: (
+        seconds: number | null,
+    ) => void;
+};
 
 function formatDateTime(
     value: string | null | undefined,
@@ -52,6 +59,8 @@ function formatDateTime(
         },
     );
 }
+
+
 const RouteMap = dynamic(
     () => import(
         "@/components/RouteMap"
@@ -61,7 +70,9 @@ const RouteMap = dynamic(
     },
 );
 
-export default function LiveTrainSearch() {
+export default function LiveTrainSearch({
+    onRefreshSecondsChange,
+}: LiveTrainSearchProps) {
 
     const [
         retryable,
@@ -77,6 +88,18 @@ export default function LiveTrainSearch() {
         showModelInsights,
         setShowModelInsights,
     ] = useState(false);
+
+
+    const [
+        etaHistory,
+        setEtaHistory,
+    ] = useState<EtaHistoryPoint[]>([]);
+
+
+    const [
+        refreshSeconds,
+        setRefreshSeconds,
+    ] = useState(60);
 
     const [
         demoLoading,
@@ -214,6 +237,86 @@ export default function LiveTrainSearch() {
         };
     }, [searchQuery]);
 
+    useEffect(() => {
+        if (!trainNumber.trim()) {
+            setEtaHistory([]);
+            return;
+        }
+
+        const storageKey =
+            `raileta-eta-history:${trainNumber.trim()}:${journeyDate}`;
+
+        try {
+            const saved =
+                window.sessionStorage.getItem(
+                    storageKey,
+                );
+
+            if (!saved) {
+                setEtaHistory([]);
+                return;
+            }
+
+            const parsed = JSON.parse(
+                saved,
+            ) as EtaHistoryPoint[];
+
+            setEtaHistory(
+                Array.isArray(parsed)
+                    ? parsed
+                    : [],
+            );
+        } catch {
+            setEtaHistory([]);
+        }
+    }, [
+        trainNumber,
+        journeyDate,
+    ]);
+
+
+
+    function recordEtaSnapshot(
+        response: LiveForecastResponse,
+    ) {
+        const prediction =
+            response.predictions.find(
+                (item) =>
+                    item.station
+                        .stations_ahead === 1,
+            )
+            ?? response.predictions[0]
+            ?? null;
+
+        if (!prediction?.forecast.eta) {
+            return;
+        }
+
+        const point: EtaHistoryPoint = {
+            observedAt:
+                new Date().toISOString(),
+
+            predictedEta:
+                prediction.forecast.eta,
+        };
+
+        const storageKey =
+            `raileta-eta-history:${response.journey.train_number}:${journeyDate}`;
+
+        setEtaHistory((current) => {
+            const next = [
+                ...current,
+                point,
+            ].slice(-12);
+
+            window.sessionStorage.setItem(
+                storageKey,
+                JSON.stringify(next),
+            );
+
+            return next;
+        });
+    }
 
     function confidenceClass(
         confidence: string,
@@ -277,6 +380,7 @@ export default function LiveTrainSearch() {
                 await railEtaApi.getDemo();
 
             setResult(response);
+            recordEtaSnapshot(response);
             setShowDemoOption(false);
 
         } catch (err) {
@@ -355,6 +459,7 @@ export default function LiveTrainSearch() {
                 });
 
             setResult(response);
+            recordEtaSnapshot(response);
 
         } catch (err) {
             if (err instanceof RailETAApiError) {
@@ -450,6 +555,29 @@ export default function LiveTrainSearch() {
         result !== null
         && result.predictions.length > 0;
 
+    useEffect(() => {
+        if (
+            !result
+            || isCompletedJourney
+            || isWaitingForObservations
+            || !trainNumber.trim()
+        ) {
+            onRefreshSecondsChange?.(null);
+            return;
+        }
+
+        onRefreshSecondsChange?.(
+            refreshSeconds,
+        );
+    }, [
+        refreshSeconds,
+        result,
+        isCompletedJourney,
+        isWaitingForObservations,
+        trainNumber,
+        onRefreshSecondsChange,
+    ]);
+
     const finalPrediction =
         result?.predictions[
         result.predictions.length - 1
@@ -512,35 +640,82 @@ export default function LiveTrainSearch() {
             || isWaitingForObservations
             || !trainNumber.trim()
         ) {
+            setRefreshSeconds(60);
             return;
         }
 
-        const intervalId = window.setInterval(async () => {
-            try {
-                const response =
-                    await railEtaApi.getLiveForecast({
-                        train_number: trainNumber.trim(),
-                        journey_date: journeyDate || null,
-                    });
+        setRefreshSeconds(60);
 
-                setResult(response);
-            } catch {
-                // Keep the last successful forecast visible.
-            }
-        }, 60_000);
+        const intervalId =
+            window.setInterval(
+                async () => {
+                    try {
+                        const response =
+                            await railEtaApi.getLiveForecast({
+                                train_number:
+                                    trainNumber.trim(),
+                                journey_date:
+                                    journeyDate || null,
+                            });
+
+                        setResult(response);
+                        recordEtaSnapshot(
+                            response,
+                        );
+                    } catch {
+                        // Keep the last successful forecast visible.
+                    } finally {
+                        setRefreshSeconds(60);
+                    }
+                },
+                60_000,
+            );
 
         return () => {
-            window.clearInterval(intervalId);
+            window.clearInterval(
+                intervalId,
+            );
         };
     }, [
         trainNumber,
         journeyDate,
         isCompletedJourney,
         isWaitingForObservations,
-        result !== null,
         hasLiveResult,
     ]);
 
+    useEffect(() => {
+        if (
+            !result
+            || isCompletedJourney
+            || isWaitingForObservations
+            || !trainNumber.trim()
+        ) {
+            return;
+        }
+
+        const countdownId =
+            window.setInterval(() => {
+                setRefreshSeconds(
+                    (current) =>
+                        current > 0
+                            ? current - 1
+                            : 0,
+                );
+            }, 1000);
+
+        return () => {
+            window.clearInterval(
+                countdownId,
+            );
+        };
+    }, [
+        trainNumber,
+        journeyDate,
+        isCompletedJourney,
+        isWaitingForObservations,
+        hasLiveResult,
+    ]);
     return (
         <section className="space-y-6">
 
@@ -722,9 +897,7 @@ export default function LiveTrainSearch() {
                             Live data
                         </span>
 
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600">
-                            Auto refresh: 60 sec
-                        </span>
+
 
                         <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700">
                             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
@@ -877,7 +1050,7 @@ export default function LiveTrainSearch() {
                         {/* Passenger ETA Hero */}
                         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
 
-                            <div className="border-b border-slate-100 px-5 py-5 sm:px-6">
+                            <div className="border-b border-slate-100 px-5 py-4 sm:px-6">
                                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 
                                     <div>
@@ -960,45 +1133,12 @@ export default function LiveTrainSearch() {
 
                                     {!isScheduledNotStarted &&
                                         !isCompletedJourney && (
-                                            <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
-                                                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                                            <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+                                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                                                 Live journey
                                             </div>
                                         )}
                                 </div>
-                            </div>
-
-                            <div className="p-5 sm:p-6">
-                                <div>
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <h3 className="text-2xl font-bold text-gray-900">
-                                            {result.journey.train_name
-                                                ?? "Train"}
-                                        </h3>
-
-                                        <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700">
-                                            {result.journey.train_number}
-                                        </span>
-                                    </div>
-
-                                    <p className="mt-2 text-sm text-gray-500">
-                                        {isCompletedJourney
-                                            ? "Journey completed"
-                                            : isScheduledNotStarted
-                                                ? "Scheduled journey"
-                                                : "Live running journey"}
-                                    </p>
-                                </div>
-
-                                {!isScheduledNotStarted
-                                    && !isCompletedJourney
-                                    && (
-                                        <div className="flex items-center gap-2 rounded-full bg-green-50 px-3 py-2 text-xs font-semibold text-green-700">
-                                            <span className="h-2 w-2 rounded-full bg-green-500" />
-
-                                            Live
-                                        </div>
-                                    )}
                             </div>
 
                             {/* Scheduled Journey */}
@@ -1107,10 +1247,10 @@ export default function LiveTrainSearch() {
                                 </div>
                             ) : (
                                 /* Running Journey */
-                                <div className="grid gap-4 lg:grid-cols-[0.9fr_1.6fr]">
+                                <div className="grid gap-4 xl:grid-cols-[0.85fr_1.35fr_1fr]">
 
                                     {/* Current journey state */}
-                                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                                   <div className="rounded-2xl border border-slate-200 bg-white p-5">
                                         <div className="flex items-center justify-between gap-3">
                                             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
                                                 Current journey
@@ -1122,7 +1262,7 @@ export default function LiveTrainSearch() {
                                             </span>
                                         </div>
 
-                                        <div className="mt-5">
+                                        <div className="mt-4">
                                             <p className="text-xs font-medium text-slate-500">
                                                 Current station
                                             </p>
@@ -1140,7 +1280,7 @@ export default function LiveTrainSearch() {
                                             )}
                                         </div>
 
-                                        <div className="mt-5 border-t border-slate-200 pt-4">
+                                        <div className="mt-4 border-t border-slate-200 pt-3">
                                             <p className="text-xs text-slate-500">
                                                 Current delay
                                             </p>
@@ -1233,7 +1373,7 @@ export default function LiveTrainSearch() {
                                                 )}
                                             </div>
 
-                                            <div className="mt-7">
+                                            <div className="mt-6">
                                                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
                                                     Predicted arrival
                                                 </p>
@@ -1255,7 +1395,9 @@ export default function LiveTrainSearch() {
                                             </div>
 
                                             {nextPrediction && (
-                                                <div className="mt-7 grid gap-3 sm:grid-cols-3">
+
+
+                                                <div className="mt-6 grid gap-3 sm:grid-cols-3">
 
                                                     <div className="rounded-xl border border-slate-200 bg-white p-3.5">
                                                         <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
@@ -1326,8 +1468,15 @@ export default function LiveTrainSearch() {
                                         </div>
                                     </div>
 
+                                    {nextPrediction && (
+                                        <EtaPredictionTrend
+                                            points={etaHistory}
+                                        />
+                                    )}
                                 </div>
                             )}
+
+
                             {/* Passenger-friendly ETA explanation */}
                             {nextPrediction &&
                                 result.diagnostics
@@ -1357,7 +1506,7 @@ export default function LiveTrainSearch() {
                                             </span>
                                         </div>
 
-                                        <div className="mt-5 space-y-3">
+                                        <div className="mt-5 grid gap-3 md:grid-cols-2">
                                             {result.diagnostics
                                                 .prediction_explanation
                                                 .factors
@@ -1379,7 +1528,7 @@ export default function LiveTrainSearch() {
                                                     return (
                                                         <div
                                                             key={`${factor.feature}-${factor.rank ?? 0}`}
-                                                            className="rounded-xl border border-slate-200 bg-slate-50/70 p-4"
+                                                            className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5"
                                                         >
                                                             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 

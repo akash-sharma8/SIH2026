@@ -1,15 +1,25 @@
 "use client";
 
 import Link from "next/link";
-
+import { useState } from "react";
 import AppNavbar from "@/components/AppNavbar";
 import LiveTrainSearch from "@/components/LiveTrainSearch";
 
+
+
 export default function Home() {
+  const [
+    refreshSeconds,
+    setRefreshSeconds,
+  ] = useState<number | null>(null);
+  
   return (
     <main className="min-h-screen bg-[#f7f9fb] text-slate-950">
 
-      <AppNavbar role="Passenger" />
+      <AppNavbar
+        role="Passenger"
+        refreshSeconds={refreshSeconds}
+      />
 
       <div className="mx-auto max-w-5xl px-4 pb-10 pt-12 sm:px-6 lg:pt-14">
 
@@ -53,7 +63,11 @@ export default function Home() {
             </span>
           </div>
 
-          <LiveTrainSearch />
+          <LiveTrainSearch
+            onRefreshSecondsChange={
+              setRefreshSeconds
+            }
+          />
 
           <div className="mt-5 border-t border-slate-100 pt-4">
             <p className="text-xs leading-5 text-slate-500">
