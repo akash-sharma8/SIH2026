@@ -43,7 +43,6 @@ class RailRadarClient:
             status=2,
             backoff_factor=0.5,
             status_forcelist=[
-                429,
                 502,
                 503,
                 504,
