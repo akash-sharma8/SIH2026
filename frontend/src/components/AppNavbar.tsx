@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 type AppNavbarProps = {
     role?:
     | "Passenger"
-    | "Station staff"
+    | "Station board"
     | "Control room"
     | "Model intelligence";
 
@@ -389,9 +389,9 @@ export default function AppNavbar({
                                     }
                                     className="flex items-center justify-between rounded-lg px-3 py-2 text-sm text-slate-200 transition hover:bg-slate-700"
                                 >
-                                    Station staff
+                                    Station board
 
-                                    {role === "Station staff" && (
+                                    {role === "Station board" && (
                                         <span className="text-sky-400">
                                             ✓
                                         </span>

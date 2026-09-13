@@ -10,6 +10,28 @@ import type {
 
 interface JourneyTimelineProps {
   timeline: JourneyTimelineData | null | undefined;
+
+  predictions?: Array<{
+    station: {
+      code: string;
+      name?: string | null;
+      stations_ahead: number;
+    };
+
+    forecast: {
+      eta: string | null;
+      predicted_delay_min: number;
+      confidence: string;
+    };
+  }>;
+
+  etaWeatherCorridor?: Array<{
+    station_code: string;
+    weather?: {
+      risk_level?: string | null;
+      condition?: string | null;
+    } | null;
+  }>;
 }
 
 
@@ -86,6 +108,24 @@ function primaryTime(
 }
 
 
+function weatherRiskClass(
+  risk: string | null | undefined,
+) {
+  switch (risk) {
+    case "LOW":
+      return "border-emerald-200 bg-emerald-50 text-emerald-700";
+
+    case "MEDIUM":
+      return "border-amber-200 bg-amber-50 text-amber-700";
+
+    case "HIGH":
+      return "border-rose-200 bg-rose-50 text-rose-700";
+
+    default:
+      return "border-slate-200 bg-slate-50 text-slate-600";
+  }
+}
+
 function timeLabel(
   station: JourneyTimelineStation,
 ) {
@@ -134,6 +174,8 @@ function statusDot(
 
 export function JourneyTimeline({
   timeline,
+  predictions = [],
+  etaWeatherCorridor = [],
 }: JourneyTimelineProps) {
   const [showAll, setShowAll] =
     useState(false);
@@ -226,24 +268,14 @@ export function JourneyTimeline({
       </div>
 
       {/* Column headings */}
-      <div className="hidden grid-cols-[40px_minmax(0,1fr)_120px_110px_90px] gap-3 border-b border-slate-100 bg-slate-50/70 px-5 py-2.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400 sm:grid sm:px-6">
+      <div className="hidden grid-cols-[40px_minmax(0,1.3fr)_115px_115px_100px_110px_110px] gap-3 border-b border-slate-100 bg-slate-50/70 px-5 py-2.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400 sm:grid sm:px-6">
         <span />
-
-        <span>
-          Station
-        </span>
-
-        <span>
-          Arrival
-        </span>
-
-        <span>
-          Delay
-        </span>
-
-        <span className="text-right">
-          Platform
-        </span>
+        <span>Station</span>
+        <span>Scheduled</span>
+        <span>ETA</span>
+        <span>Delay</span>
+        <span>Confidence</span>
+        <span>Weather Risk</span>
       </div>
 
       {/* Stations */}
@@ -254,6 +286,27 @@ export function JourneyTimeline({
               formatDelay(
                 station.delay_min,
               );
+
+            const prediction =
+              predictions.find(
+                (item) =>
+                  item.station.code ===
+                  station.station_code,
+              );
+
+            const weatherEntry =
+              etaWeatherCorridor.find(
+                (item) =>
+                  item.station_code ===
+                  station.station_code,
+              );
+
+            const weather =
+              weatherEntry?.weather;
+
+            const scheduledTime =
+              station.scheduled_arrival
+              ?? station.scheduled_departure;
 
             const isCurrent =
               station.status === "CURRENT";
@@ -268,7 +321,7 @@ export function JourneyTimeline({
               <div
                 key={`${station.station_code ?? "station"}-${index}`}
                 className={[
-                  "relative grid grid-cols-[32px_minmax(0,1fr)] gap-3 border-b border-slate-100 px-5 py-4 last:border-b-0 sm:grid-cols-[40px_minmax(0,1fr)_120px_110px_90px] sm:px-6",
+                  "relative grid grid-cols-[32px_minmax(0,1fr)] gap-3 border-b border-slate-100 px-5 py-4 last:border-b-0 sm:grid-cols-[40px_minmax(0,1.3fr)_115px_115px_100px_110px_110px] sm:items-center sm:px-6",
                   isCurrent
                     ? "bg-sky-50/80"
                     : isNext
@@ -337,13 +390,13 @@ export function JourneyTimeline({
                   <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400">
                     {station.distance_from_source_km !==
                       null && (
-                      <span>
-                        {Math.round(
-                          station.distance_from_source_km,
-                        )}{" "}
-                        km
-                      </span>
-                    )}
+                        <span>
+                          {Math.round(
+                            station.distance_from_source_km,
+                          )}{" "}
+                          km
+                        </span>
+                      )}
 
                     <span className="sm:hidden">
                       {timeLabel(station)}:{" "}
@@ -357,36 +410,99 @@ export function JourneyTimeline({
                     </span>
                   </div>
 
-                  {/* Mobile delay/platform */}
-                  <div className="mt-2 flex flex-wrap gap-2 sm:hidden">
-                    {delay && (
-                      <span
-                        className={[
-                          "rounded-full px-2 py-0.5 text-[11px] font-semibold",
-                          station.delay_min !==
-                            null &&
-                          station.delay_min > 0
-                            ? "bg-rose-50 text-rose-700"
-                            : station.delay_min !==
-                                null &&
-                              station.delay_min < 0
-                              ? "bg-sky-50 text-sky-700"
-                              : "bg-emerald-50 text-emerald-700",
-                        ].join(" ")}
-                      >
-                        {delay}
-                      </span>
-                    )}
+                  {/* Mobile prediction details */}
+                  <div className="mt-3 grid grid-cols-2 gap-2 sm:hidden">
 
-                    {station.platform && (
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
-                        Platform {station.platform}
-                      </span>
-                    )}
+                    <div className="rounded-lg bg-slate-50 px-3 py-2">
+                      <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">
+                        Scheduled
+                      </p>
+
+                      <p className="mt-1 text-xs font-semibold text-slate-800">
+                        {formatTime(scheduledTime)}
+                      </p>
+                    </div>
+
+                    <div className="rounded-lg bg-slate-50 px-3 py-2">
+                      <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">
+                        ETA
+                      </p>
+
+                      <p className="mt-1 text-xs font-semibold text-sky-700">
+                        {prediction?.forecast.eta
+                          ? formatTime(
+                            prediction.forecast.eta,
+                          )
+                          : "--"}
+                      </p>
+                    </div>
+
+                    <div className="rounded-lg bg-slate-50 px-3 py-2">
+                      <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">
+                        Delay
+                      </p>
+
+                      <p className="mt-1 text-xs font-semibold text-slate-700">
+                        {prediction
+                          ? prediction.forecast.predicted_delay_min > 0
+                            ? `+${prediction.forecast.predicted_delay_min.toFixed(1)} min`
+                            : prediction.forecast.predicted_delay_min < 0
+                              ? `${prediction.forecast.predicted_delay_min.toFixed(1)} min`
+                              : "On time"
+                          : "--"}
+                      </p>
+                    </div>
+
+                    <div className="rounded-lg bg-slate-50 px-3 py-2">
+                      <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">
+                        Confidence
+                      </p>
+
+                      <p className="mt-1 text-xs font-semibold text-slate-700">
+                        {prediction?.forecast.confidence
+                          ?? "--"}
+                      </p>
+                    </div>
+
+                    <div className="col-span-2 rounded-lg bg-slate-50 px-3 py-2">
+                      <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">
+                        Weather Risk
+                      </p>
+
+                      {weather?.risk_level ? (
+                        <div className="mt-1 flex flex-wrap items-center gap-2">
+                          <span
+                            className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${weatherRiskClass(
+                              weather.risk_level,
+                            )}`}
+                          >
+                            {weather.risk_level}
+                          </span>
+
+                          {weather.condition && (
+                            <span className="text-[10px] text-slate-500">
+                              {weather.condition}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="mt-1 text-xs text-slate-400">
+                          --
+                        </p>
+                      )}
+                    </div>
+
                   </div>
                 </div>
 
-                {/* Arrival */}
+                {/* Scheduled */}
+                <div className="hidden sm:block">
+                  <p className="text-sm font-semibold text-slate-700">
+                    {formatTime(scheduledTime)}
+                  </p>
+                </div>
+
+                {/* ETA */}
                 <div className="hidden sm:block">
                   <p
                     className={[
@@ -396,38 +512,23 @@ export function JourneyTimeline({
                         : "text-slate-800",
                     ].join(" ")}
                   >
-                    {formatTime(
-                      primaryTime(
-                        station,
-                      ),
-                    )}
-                  </p>
-
-                  <p className="mt-0.5 text-[10px] text-slate-400">
-                    {timeLabel(
-                      station,
-                    )}
+                    {prediction?.forecast.eta
+                      ? formatTime(
+                        prediction.forecast.eta,
+                      )
+                      : "--"}
                   </p>
                 </div>
 
                 {/* Delay */}
                 <div className="hidden sm:block">
-                  {delay ? (
-                    <span
-                      className={[
-                        "inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold",
-                        station.delay_min !==
-                          null &&
-                        station.delay_min > 0
-                          ? "bg-rose-50 text-rose-700"
-                          : station.delay_min !==
-                              null &&
-                            station.delay_min < 0
-                            ? "bg-sky-50 text-sky-700"
-                            : "bg-emerald-50 text-emerald-700",
-                      ].join(" ")}
-                    >
-                      {delay}
+                  {prediction ? (
+                    <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+                      {prediction.forecast.predicted_delay_min > 0
+                        ? `+${prediction.forecast.predicted_delay_min.toFixed(1)} min`
+                        : prediction.forecast.predicted_delay_min < 0
+                          ? `${prediction.forecast.predicted_delay_min.toFixed(1)} min`
+                          : "On time"}
                     </span>
                   ) : (
                     <span className="text-xs text-slate-400">
@@ -436,12 +537,36 @@ export function JourneyTimeline({
                   )}
                 </div>
 
-                {/* Platform */}
-                <div className="hidden text-right sm:block">
-                  {station.platform ? (
-                    <span className="inline-flex min-w-7 items-center justify-center rounded-lg bg-slate-100 px-2 py-1 text-xs font-bold text-slate-700">
-                      {station.platform}
+                {/* Confidence */}
+                <div className="hidden sm:block">
+                  {prediction ? (
+                    <span className="inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold capitalize text-slate-700">
+                      {prediction.forecast.confidence}
                     </span>
+                  ) : (
+                    <span className="text-xs text-slate-400">
+                      --
+                    </span>
+                  )}
+                </div>
+
+                {/* Weather risk */}
+                <div className="hidden sm:block">
+                  {weather?.risk_level ? (
+                    <>
+                      <span
+                        className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${weatherRiskClass(
+                          weather.risk_level,
+                        )}`}
+                      >
+                        {weather.risk_level}
+                      </span>
+                      {weather.condition && (
+                        <p className="mt-1 text-[10px] text-slate-400">
+                          {weather.condition}
+                        </p>
+                      )}
+                    </>
                   ) : (
                     <span className="text-xs text-slate-400">
                       --

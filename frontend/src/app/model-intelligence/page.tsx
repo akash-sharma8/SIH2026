@@ -628,7 +628,7 @@ export default function ModelIntelligencePage() {
 
 
                 {/* Live served-model inspector */}
-                <section className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <section className="relative z-20 mt-6 overflow-visible rounded-2xl border border-slate-200 bg-white shadow-sm">
 
                     <div className="border-b border-slate-100 px-5 py-4 sm:px-6">
                         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">
@@ -672,7 +672,7 @@ export default function ModelIntelligencePage() {
                                     />
 
                                     {searchResults.length > 0 && (
-                                        <div className="absolute left-0 right-0 top-full z-30 mt-2 max-h-80 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl">
+                                        <div className="absolute left-0 right-0 top-full z-[100] mt-2 max-h-72 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl">
                                             {searchResults.map(
                                                 (train) => (
                                                     <button

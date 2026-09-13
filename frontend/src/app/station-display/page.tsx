@@ -335,7 +335,7 @@ export default function StationDisplayPage() {
     return (
         <main className="min-h-screen bg-[#f7f9fb] text-slate-950">
 
-            <AppNavbar role="Station staff" />
+            <AppNavbar role="Station board" />
 
             <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
 
@@ -718,354 +718,87 @@ export default function StationDisplayPage() {
                             </div>
                         </section>
 
-                        {/* Main arrival intelligence */}
-                        <section className="grid gap-5 lg:grid-cols-[1.45fr_1fr]">
 
-                            {/* ETA hero */}
-                            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                                <div className="border-b border-slate-100 px-5 py-4 sm:px-6">
-                                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">
-                                        Arrival intelligence
-                                    </p>
 
-                                    <p className="mt-1 text-sm text-slate-500">
-                                        {isCompleted
-                                            ? "Final journey state"
-                                            : isScheduled
-                                                ? "Scheduled origin departure"
-                                                : "Predicted next-station arrival"}
-                                    </p>
-                                </div>
-
-                                <div className="px-5 py-6 sm:px-6 sm:py-8">
-                                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                                        {isCompleted
-                                            ? "Final Station"
-                                            : isScheduled
-                                                ? "Starts From"
-                                                : "Next Arrival"}
-                                    </p>
-
-                                    <h3 className="mt-2 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
-                                        {isCompleted
-                                            ? result.journey.current_station_name
-                                            ?? result.journey.current_station_code
-                                            ?? "Unavailable"
-                                            : isScheduled
-                                                ? result.journey.source?.station_name
-                                                ?? result.journey.source?.station_code
-                                                ?? "Unavailable"
-                                                : nextPrediction?.station.name
-                                                ?? nextPrediction?.station.code
-                                                ?? "Unavailable"}
-                                    </h3>
-
-                                    {!isCompleted &&
-                                        !isScheduled &&
-                                        nextPrediction && (
-                                            <p className="mt-1 text-sm font-medium text-slate-500">
-                                                {nextPrediction.station.code}
-                                            </p>
-                                        )}
-
-                                    <div className="mt-7">
-                                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                                            {isScheduled
-                                                ? "Scheduled Departure"
-                                                : isCompleted
-                                                    ? "Journey Status"
-                                                    : "Expected Arrival"}
-                                        </p>
-
-                                        <p
-                                            className={[
-                                                "mt-2 font-bold tracking-tight",
-                                                isCompleted
-                                                    ? "text-3xl text-emerald-700"
-                                                    : "text-5xl text-slate-950 sm:text-6xl",
-                                            ].join(" ")}
-                                        >
-                                            {isCompleted
-                                                ? "Completed"
-                                                : isScheduled
-                                                    ? formatTime(
-                                                        result.journey.source
-                                                            ?.scheduled_departure,
-                                                    )
-                                                    : nextPrediction?.forecast.eta
-                                                        ? formatTime(
-                                                            nextPrediction.forecast.eta,
-                                                        )
-                                                        : "--"}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Operational KPI cards */}
-                            <div className="grid gap-3 sm:grid-cols-2">
-
-                                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                                    <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                                        Delay
-                                    </p>
-
-                                    <p className="mt-2 text-2xl font-bold text-slate-950">
-                                        {isScheduled
-                                            ? "N/A"
-                                            : nextPrediction
-                                                ? `${nextPrediction.forecast.predicted_delay_min.toFixed(1)} min`
-                                                : result.journey.current_delay_min != null
-                                                    ? `${result.journey.current_delay_min} min`
-                                                    : "Unavailable"}
-                                    </p>
-                                </div>
-
-                                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                                    <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                                        Confidence
-                                    </p>
-
-                                    <p className="mt-2 text-2xl font-bold text-slate-950">
-                                        {nextPrediction?.forecast.confidence ?? "N/A"}
-                                    </p>
-                                </div>
-
-                                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                                    <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                                        Current position
-                                    </p>
-
-                                    <p className="mt-2 text-base font-bold text-slate-950">
-                                        {result.journey.current_station_name
-                                            ?? result.journey.current_station_code
-                                            ?? "Unavailable"}
-                                    </p>
-
-                                    <span
-                                        className={[
-                                            "mt-3 inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold",
-                                            livePositionSource === "REAL_PROVIDER_GPS"
-                                                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                                                : livePositionSource === "CURRENT_STATION"
-                                                    ? "border-sky-200 bg-sky-50 text-sky-700"
-                                                    : livePositionSource === "ESTIMATED_BETWEEN_STATIONS"
-                                                        ? "border-amber-200 bg-amber-50 text-amber-700"
-                                                        : "border-slate-200 bg-slate-50 text-slate-600",
-                                        ].join(" ")}
-                                    >
-                                        {livePositionSource === "REAL_PROVIDER_GPS"
-                                            ? "Live GPS"
-                                            : livePositionSource === "CURRENT_STATION"
-                                                ? "Station position"
-                                                : livePositionSource === "ESTIMATED_BETWEEN_STATIONS"
-                                                    ? "Estimated position"
-                                                    : "Source unavailable"}
-                                    </span>
-                                </div>
-
-                                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                                    <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                                        Platform
-                                    </p>
-
-                                    <p className="mt-2 text-2xl font-bold text-slate-950">
-                                        {result.journey.timeline?.stations.find(
-                                            (station) =>
-                                                station.station_code ===
-                                                nextPrediction?.station.code,
-                                        )?.platform ?? "N/A"}
-                                    </p>
-                                </div>
-
-                            </div>
-                        </section>
-
-                        {/* Upcoming station arrivals */}
-                        {!isCompleted
-                            && !isScheduled
-                            && result.predictions.length > 0 && (
+                        {result.journey.timeline &&
+                            result.journey.timeline.stations.length > 0 && (
                                 <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
 
-                                    <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-                                        <div>
-                                            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">
-                                                Upcoming arrivals
-                                            </p>
+                                    <div className="border-b border-slate-100 px-5 py-4 sm:px-6">
+                                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">
+                                            Station timetable
+                                        </p>
 
-                                            <h3 className="mt-1 text-lg font-bold text-slate-950">
-                                                All upcoming stations
-                                            </h3>
+                                        <h2 className="mt-1 text-xl font-bold text-slate-950">
+                                            Scheduled station board
+                                        </h2>
 
-                                            <p className="mt-1 text-sm text-slate-500">
-                                                Forward-looking ETA predictions for the remaining stations only.
-                                            </p>
-                                        </div>
+                                        <p className="mt-1 text-sm text-slate-500">
+                                            Scheduled stops and platform information.
+                                        </p>
+                                    </div>
 
-                                        <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-600">
-                                            RailETA predictions
+                                    <div className="hidden grid-cols-[minmax(0,1fr)_150px_100px] gap-3 border-b border-slate-100 bg-slate-50/70 px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400 sm:grid sm:px-6">
+                                        <span>Station</span>
+                                        <span>Scheduled Time</span>
+                                        <span className="text-right">
+                                            Platform
                                         </span>
                                     </div>
 
-                                    {/* Desktop header */}
-                                    <div className="hidden grid-cols-[minmax(0,1.6fr)_120px_130px_120px_100px] gap-3 border-b border-slate-100 bg-slate-50/70 px-5 py-2.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400 md:grid md:px-6">
-                                        <span>Station</span>
-                                        <span>ETA</span>
-                                        <span>Delay</span>
-                                        <span>Confidence</span>
-                                        <span>Platform</span>
-                                    </div>
-
                                     <div>
-                                        {result.predictions
-                                            .map((prediction, index) => {
-                                                const platform =
-                                                    result.journey.timeline?.stations.find(
-                                                        (station) =>
-                                                            station.station_code ===
-                                                            prediction.station.code,
-                                                    )?.platform ?? "N/A";
+                                        {result.journey.timeline.stations.map(
+                                            (station, index) => {
+                                                const scheduledTime =
+                                                    station.scheduled_arrival
+                                                    ?? station.scheduled_departure;
 
                                                 return (
                                                     <div
-                                                        key={`${prediction.station.code}-${prediction.station.stations_ahead}`}
-                                                        className={[
-                                                            "grid gap-4 border-b border-slate-100 px-5 py-4 last:border-b-0 md:grid-cols-[minmax(0,1.6fr)_120px_130px_120px_100px] md:items-center md:px-6",
-                                                            index === 0
-                                                                ? "bg-sky-50/60"
-                                                                : "bg-white",
-                                                        ].join(" ")}
+                                                        key={`${station.station_code ?? "station"}-${index}`}
+                                                        className="grid gap-3 border-b border-slate-100 px-5 py-4 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_150px_100px] sm:items-center sm:px-6"
                                                     >
-
-                                                        {/* Station */}
-                                                        <div className="min-w-0">
-                                                            <div className="flex items-center gap-3">
-                                                                <div
-                                                                    className={[
-                                                                        "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold",
-                                                                        index === 0
-                                                                            ? "bg-sky-600 text-white"
-                                                                            : "border border-slate-200 bg-white text-slate-600",
-                                                                    ].join(" ")}
-                                                                >
-                                                                    {index + 1}
-                                                                </div>
-
-                                                                <div className="min-w-0">
-                                                                    <div className="flex flex-wrap items-center gap-2">
-                                                                        <p className="truncate font-semibold text-slate-950">
-                                                                            {prediction.station.name
-                                                                                ?? prediction.station.code}
-                                                                        </p>
-
-                                                                        {index === 0 && (
-                                                                            <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-sky-700">
-                                                                                Next
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
-
-                                                                    <p className="mt-0.5 text-xs text-slate-400">
-                                                                        {prediction.station.code}
-                                                                        {" • "}
-                                                                        {prediction.station.stations_ahead}{" "}
-                                                                        station
-                                                                        {prediction.station.stations_ahead === 1
-                                                                            ? ""
-                                                                            : "s"}{" "}
-                                                                        ahead
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        {/* ETA */}
                                                         <div>
-                                                            <p className="text-[10px] uppercase tracking-wide text-slate-400 md:hidden">
-                                                                ETA
+                                                            <p className="font-semibold text-slate-950">
+                                                                {station.station_name
+                                                                    ?? station.station_code
+                                                                    ?? "Unknown station"}
                                                             </p>
 
-                                                            <p
-                                                                className={[
-                                                                    "mt-1 text-sm font-semibold md:mt-0",
-                                                                    index === 0
-                                                                        ? "text-sky-700"
-                                                                        : "text-slate-800",
-                                                                ].join(" ")}
-                                                            >
-                                                                {prediction.forecast.eta
-                                                                    ? formatTime(
-                                                                        prediction.forecast.eta,
-                                                                    )
-                                                                    : "--"}
+                                                            {station.station_code && (
+                                                                <p className="mt-0.5 text-xs text-slate-400">
+                                                                    {station.station_code}
+                                                                </p>
+                                                            )}
+                                                        </div>
+
+                                                        <div>
+                                                            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 sm:hidden">
+                                                                Scheduled Time
+                                                            </p>
+
+                                                            <p className="mt-1 font-semibold text-slate-800 sm:mt-0">
+                                                                {formatTime(
+                                                                    scheduledTime,
+                                                                )}
                                                             </p>
                                                         </div>
 
-                                                        {/* Delay */}
-                                                        <div>
-                                                            <p className="text-[10px] uppercase tracking-wide text-slate-400 md:hidden">
-                                                                Delay
-                                                            </p>
-
-                                                            <span
-                                                                className={[
-                                                                    "mt-1 inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold md:mt-0",
-                                                                    prediction.forecast.predicted_delay_min > 0
-                                                                        ? "bg-rose-50 text-rose-700"
-                                                                        : prediction.forecast.predicted_delay_min < 0
-                                                                            ? "bg-sky-50 text-sky-700"
-                                                                            : "bg-emerald-50 text-emerald-700",
-                                                                ].join(" ")}
-                                                            >
-                                                                {prediction.forecast.predicted_delay_min < 0
-                                                                    ? `${Math.abs(
-                                                                        prediction.forecast.predicted_delay_min,
-                                                                    ).toFixed(1)} min early`
-                                                                    : prediction.forecast.predicted_delay_min === 0
-                                                                        ? "On time"
-                                                                        : `+${prediction.forecast.predicted_delay_min.toFixed(1)} min`}
-                                                            </span>
-                                                        </div>
-
-                                                        {/* Confidence */}
-                                                        <div>
-                                                            <p className="text-[10px] uppercase tracking-wide text-slate-400 md:hidden">
-                                                                Confidence
-                                                            </p>
-
-                                                            <span
-                                                                className={[
-                                                                    "mt-1 inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold md:mt-0",
-                                                                    prediction.forecast.confidence === "HIGH"
-                                                                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                                                                        : prediction.forecast.confidence === "MEDIUM"
-                                                                            ? "border-amber-200 bg-amber-50 text-amber-700"
-                                                                            : "border-rose-200 bg-rose-50 text-rose-700",
-                                                                ].join(" ")}
-                                                            >
-                                                                {prediction.forecast.confidence}
-                                                            </span>
-                                                        </div>
-
-                                                        {/* Platform */}
-                                                        <div>
-                                                            <p className="text-[10px] uppercase tracking-wide text-slate-400 md:hidden">
+                                                        <div className="sm:text-right">
+                                                            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 sm:hidden">
                                                                 Platform
                                                             </p>
-
-                                                            <p className="mt-1 text-sm font-semibold text-slate-800 md:mt-0">
-                                                                {platform}
-                                                            </p>
+                                                            <span className="inline-flex min-w-8 items-center justify-center rounded-lg bg-slate-100 px-2 py-1 text-xs font-bold text-slate-700">
+                                                                {station.platform
+                                                                    ?? "--"}
+                                                            </span>
                                                         </div>
-
                                                     </div>
                                                 );
-                                            })}
+                                            },
+                                        )}
                                     </div>
 
-                                    <div className="border-t border-slate-100 bg-slate-50/60 px-5 py-3 text-[11px] text-slate-500 sm:px-6">
-                                        Predictions update from the latest verified live journey state.
-                                    </div>
                                 </section>
                             )}
 
