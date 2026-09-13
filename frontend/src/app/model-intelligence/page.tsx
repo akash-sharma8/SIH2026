@@ -628,7 +628,7 @@ export default function ModelIntelligencePage() {
 
 
                 {/* Live served-model inspector */}
-                <section className="relative z-20 mt-6 overflow-visible rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <section className="relative z-20 mt-6 rounded-2xl border border-slate-200 bg-white shadow-sm">
 
                     <div className="border-b border-slate-100 px-5 py-4 sm:px-6">
                         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">
@@ -651,7 +651,7 @@ export default function ModelIntelligencePage() {
                         <div className="relative max-w-3xl">
                             <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
 
-                                <div className="relative">
+                                <div>
                                     <label
                                         htmlFor="model-inspector-search"
                                         className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500"
@@ -672,7 +672,7 @@ export default function ModelIntelligencePage() {
                                     />
 
                                     {searchResults.length > 0 && (
-                                        <div className="absolute left-0 right-0 top-full z-[100] mt-2 max-h-72 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl">
+                                        <div className="mt-2 max-h-64 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-sm">
                                             {searchResults.map(
                                                 (train) => (
                                                     <button
