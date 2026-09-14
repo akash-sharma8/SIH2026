@@ -89,6 +89,10 @@ export default function LiveTrainSearch({
         setShowModelInsights,
     ] = useState(false);
 
+    const [
+        showPredictionExplanation,
+        setShowPredictionExplanation,
+    ] = useState(false);
 
     const [
         etaHistory,
@@ -1269,7 +1273,7 @@ export default function LiveTrainSearch({
                                 <div className="grid items-start gap-4 xl:grid-cols-[0.85fr_1.35fr_1fr]">
 
                                     {/* Current journey state */}
-                                    <div className="rounded-2xl border border-slate-200 bg-white p-5">
+                                    <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-5">
                                         <div className="flex items-center justify-between gap-3">
                                             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
                                                 Current journey
@@ -1352,18 +1356,21 @@ export default function LiveTrainSearch({
                                     </div>
 
                                     {/* Main ETA prediction */}
-                                    <div className="relative overflow-hidden rounded-2xl border border-sky-200 bg-gradient-to-br from-sky-50 via-white to-white p-5 sm:p-6">
+                                    <div className="relative overflow-hidden rounded-2xl border border-sky-200 bg-gradient-to-br from-sky-50 via-white to-white p-3 sm:p-5">
 
-                                        <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-sky-100/60 blur-3xl" />
+                                        <div className="absolute right-0 top-0 h-24 w-24 rounded-full bg-sky-100/60 blur-3xl sm:h-32 sm:w-32" />
 
                                         <div className="relative">
-                                            <div className="flex flex-wrap items-start justify-between gap-3">
-                                                <div>
-                                                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">
+
+                                            {/* Station + confidence */}
+                                            <div className="flex items-start justify-between gap-3">
+
+                                                <div className="min-w-0">
+                                                    <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-sky-700 sm:text-[11px]">
                                                         Next station
                                                     </p>
 
-                                                    <h4 className="mt-2 text-2xl font-bold tracking-tight text-slate-950">
+                                                    <h4 className="mt-1 break-words text-base font-bold tracking-tight text-slate-950 sm:mt-2 sm:text-2xl">
                                                         {nextPrediction
                                                             ? (
                                                                 nextPrediction.station.name
@@ -1375,7 +1382,7 @@ export default function LiveTrainSearch({
                                                     </h4>
 
                                                     {nextPrediction?.station.code && (
-                                                        <p className="mt-1 text-sm text-slate-500">
+                                                        <p className="mt-0.5 text-[10px] text-slate-500 sm:mt-1 sm:text-sm">
                                                             {nextPrediction.station.code}
                                                         </p>
                                                     )}
@@ -1383,21 +1390,22 @@ export default function LiveTrainSearch({
 
                                                 {nextPrediction && (
                                                     <span
-                                                        className={confidenceClass(
+                                                        className={`${confidenceClass(
                                                             nextPrediction.forecast.confidence,
-                                                        )}
+                                                        )} shrink-0 text-[9px] sm:text-xs`}
                                                     >
                                                         {nextPrediction.forecast.confidence}
                                                     </span>
                                                 )}
                                             </div>
 
-                                            <div className="mt-6">
-                                                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                                            {/* Predicted arrival */}
+                                            <div className="mt-3 sm:mt-5">
+                                                <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-500 sm:text-xs">
                                                     Predicted arrival
                                                 </p>
 
-                                                <p className="mt-1 text-4xl font-bold tracking-tight text-[#0876c9] sm:text-5xl">
+                                                <p className="mt-0.5 text-2xl font-bold tracking-tight text-[#0876c9] sm:mt-1 sm:text-4xl lg:text-5xl">
                                                     {nextPrediction?.forecast.eta
                                                         ? new Date(
                                                             nextPrediction.forecast.eta,
@@ -1415,17 +1423,17 @@ export default function LiveTrainSearch({
 
                                             {nextPrediction && (
 
+                                                <div className="mt-3 grid grid-cols-2 gap-2 sm:mt-5 sm:grid-cols-3">
 
-                                                <div className="mt-6 grid gap-3 sm:grid-cols-3">
-
-                                                    <div className="rounded-xl border border-slate-200 bg-white p-3.5">
-                                                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-                                                            Expected delay
+                                                    {/* Delay */}
+                                                    <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 sm:rounded-xl sm:p-3.5">
+                                                        <p className="text-[8px] font-medium uppercase tracking-wide text-slate-400 sm:text-[11px]">
+                                                            Delay
                                                         </p>
 
                                                         <p
                                                             className={[
-                                                                "mt-1.5 text-lg font-bold",
+                                                                "mt-0.5 text-sm font-bold sm:mt-1.5 sm:text-lg",
                                                                 nextPrediction.forecast.predicted_delay_min > 0
                                                                     ? "text-rose-700"
                                                                     : nextPrediction.forecast.predicted_delay_min < 0
@@ -1441,22 +1449,24 @@ export default function LiveTrainSearch({
                                                         </p>
                                                     </div>
 
-                                                    <div className="rounded-xl border border-slate-200 bg-white p-3.5">
-                                                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                                                    {/* Confidence */}
+                                                    <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 sm:rounded-xl sm:p-3.5">
+                                                        <p className="text-[8px] font-medium uppercase tracking-wide text-slate-400 sm:text-[11px]">
                                                             Confidence
                                                         </p>
 
-                                                        <p className="mt-1.5 text-lg font-bold capitalize text-slate-900">
+                                                        <p className="mt-0.5 text-sm font-bold capitalize text-slate-900 sm:mt-1.5 sm:text-lg">
                                                             {nextPrediction.forecast.confidence}
                                                         </p>
                                                     </div>
 
-                                                    <div className="rounded-xl border border-slate-200 bg-white p-3.5">
-                                                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-                                                            Position source
+                                                    {/* Position */}
+                                                    <div className="col-span-2 rounded-lg border border-slate-200 bg-white px-3 py-2 sm:col-span-1 sm:rounded-xl sm:p-3.5">
+                                                        <p className="text-[8px] font-medium uppercase tracking-wide text-slate-400 sm:text-[11px]">
+                                                            Position
                                                         </p>
 
-                                                        <p className="mt-1.5 text-sm font-bold text-slate-900">
+                                                        <p className="mt-0.5 truncate text-sm font-bold text-slate-900 sm:mt-1.5">
                                                             {livePositionSource === "REAL_PROVIDER_GPS"
                                                                 ? "Live GPS"
                                                                 : livePositionSource === "CURRENT_STATION"
@@ -1472,7 +1482,7 @@ export default function LiveTrainSearch({
 
                                             {!nextPrediction &&
                                                 isWaitingForObservations && (
-                                                    <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4">
+                                                    <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 sm:mt-5 sm:p-4">
                                                         <p className="text-sm font-semibold text-amber-900">
                                                             Waiting for verified live observations
                                                         </p>
@@ -1484,6 +1494,7 @@ export default function LiveTrainSearch({
                                                         </p>
                                                     </div>
                                                 )}
+
                                         </div>
                                     </div>
 
@@ -1501,173 +1512,196 @@ export default function LiveTrainSearch({
                                 result.diagnostics
                                     ?.prediction_explanation
                                     ?.explanation_available && (
-                                    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+                                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
 
-                                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                            <div>
-                                                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                setShowPredictionExplanation(
+                                                    (current) => !current,
+                                                )
+                                            }
+                                            className="flex w-full items-center justify-between gap-4 px-4 py-4 text-left sm:px-6"
+                                        >
+                                            <div className="min-w-0">
+                                                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-700">
                                                     Prediction explanation
                                                 </p>
 
-                                                <h3 className="mt-1 text-lg font-bold text-slate-950">
+                                                <h3 className="mt-1 text-base font-bold text-slate-950 sm:text-lg">
                                                     Why this ETA?
                                                 </h3>
 
-                                                <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">
-                                                    Main model factors associated with the current
-                                                    arrival forecast.
+                                                <p className="mt-1 text-xs text-slate-500 sm:text-sm">
+                                                    See the main factors influencing this prediction.
                                                 </p>
                                             </div>
 
-                                            <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-[11px] font-medium text-sky-700">
-                                                <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
-                                                Model explanation available
-                                            </span>
-                                        </div>
+                                            <div className="flex shrink-0 items-center gap-2">
+                                                <span className="hidden rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-[10px] font-medium text-sky-700 sm:inline-flex">
+                                                    Model explanation available
+                                                </span>
 
-                                        <div className="mt-5 grid gap-3 md:grid-cols-2">
-                                            {result.diagnostics
-                                                .prediction_explanation
-                                                .factors
-                                                .slice(0, 4)
-                                                .map((factor) => {
-                                                    const contribution =
-                                                        factor.contribution ?? 0;
+                                                <span
+                                                    className={[
+                                                        "text-xl text-slate-400 transition-transform",
+                                                        showPredictionExplanation
+                                                            ? "rotate-180"
+                                                            : "",
+                                                    ].join(" ")}
+                                                >
+                                                    ⌄
+                                                </span>
+                                            </div>
+                                        </button>
 
-                                                    const absoluteContribution =
-                                                        Math.abs(contribution);
+                                        {showPredictionExplanation && (
+                                            <div className="border-t border-slate-100 px-4 py-4 sm:px-6 sm:py-5">
 
-                                                    const directionLabel =
-                                                        factor.direction === "INCREASES_DELAY"
-                                                            ? "Pushes ETA later"
-                                                            : factor.direction === "REDUCES_DELAY"
-                                                                ? "Pushes ETA earlier"
-                                                                : "Influences ETA";
+                                                <div className="mt-5 grid gap-3 md:grid-cols-2">
+                                                    {result.diagnostics
+                                                        .prediction_explanation
+                                                        .factors
+                                                        .slice(0, 4)
+                                                        .map((factor) => {
+                                                            const contribution =
+                                                                factor.contribution ?? 0;
 
-                                                    return (
-                                                        <div
-                                                            key={`${factor.feature}-${factor.rank ?? 0}`}
-                                                            className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5"
-                                                        >
-                                                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                                            const absoluteContribution =
+                                                                Math.abs(contribution);
 
-                                                                <div className="min-w-0">
-                                                                    <div className="flex flex-wrap items-center gap-2">
-                                                                        <p className="font-semibold text-slate-900">
-                                                                            {factor.display_name
-                                                                                ?? factor.feature}
-                                                                        </p>
+                                                            const directionLabel =
+                                                                factor.direction === "INCREASES_DELAY"
+                                                                    ? "Pushes ETA later"
+                                                                    : factor.direction === "REDUCES_DELAY"
+                                                                        ? "Pushes ETA earlier"
+                                                                        : "Influences ETA";
 
-                                                                        <span
-                                                                            className={[
-                                                                                "rounded-full border px-2 py-0.5 text-[10px] font-semibold",
-                                                                                factor.direction === "INCREASES_DELAY"
-                                                                                    ? "border-rose-200 bg-rose-50 text-rose-700"
+                                                            return (
+                                                                <div
+                                                                    key={`${factor.feature}-${factor.rank ?? 0}`}
+                                                                    className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5"
+                                                                >
+                                                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+
+                                                                        <div className="min-w-0">
+                                                                            <div className="flex flex-wrap items-center gap-2">
+                                                                                <p className="font-semibold text-slate-900">
+                                                                                    {factor.display_name
+                                                                                        ?? factor.feature}
+                                                                                </p>
+
+                                                                                <span
+                                                                                    className={[
+                                                                                        "rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+                                                                                        factor.direction === "INCREASES_DELAY"
+                                                                                            ? "border-rose-200 bg-rose-50 text-rose-700"
+                                                                                            : factor.direction === "REDUCES_DELAY"
+                                                                                                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                                                                                : "border-slate-200 bg-white text-slate-600",
+                                                                                    ].join(" ")}
+                                                                                >
+                                                                                    {directionLabel}
+                                                                                </span>
+                                                                            </div>
+
+                                                                            <p className="mt-1 text-xs leading-5 text-slate-500">
+                                                                                {factor.direction === "INCREASES_DELAY"
+                                                                                    ? "Associated with a later predicted arrival."
                                                                                     : factor.direction === "REDUCES_DELAY"
-                                                                                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                                                                                        : "border-slate-200 bg-white text-slate-600",
-                                                                            ].join(" ")}
-                                                                        >
-                                                                            {directionLabel}
-                                                                        </span>
+                                                                                        ? "Associated with an earlier predicted arrival."
+                                                                                        : "Used as part of the current ETA prediction."}
+                                                                            </p>
+                                                                        </div>
+
+                                                                        {factor.contribution != null && (
+                                                                            <div className="shrink-0 text-left sm:text-right">
+                                                                                <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
+                                                                                    Model contribution
+                                                                                </p>
+
+                                                                                <p
+                                                                                    className={[
+                                                                                        "mt-1 text-base font-bold",
+                                                                                        contribution > 0
+                                                                                            ? "text-rose-700"
+                                                                                            : contribution < 0
+                                                                                                ? "text-emerald-700"
+                                                                                                : "text-slate-700",
+                                                                                    ].join(" ")}
+                                                                                >
+                                                                                    {contribution > 0
+                                                                                        ? "+"
+                                                                                        : contribution < 0
+                                                                                            ? "−"
+                                                                                            : ""}
+                                                                                    {absoluteContribution.toFixed(1)} min
+                                                                                </p>
+                                                                            </div>
+                                                                        )}
                                                                     </div>
 
-                                                                    <p className="mt-1 text-xs leading-5 text-slate-500">
-                                                                        {factor.direction === "INCREASES_DELAY"
-                                                                            ? "Associated with a later predicted arrival."
-                                                                            : factor.direction === "REDUCES_DELAY"
-                                                                                ? "Associated with an earlier predicted arrival."
-                                                                                : "Used as part of the current ETA prediction."}
-                                                                    </p>
+                                                                    {factor.contribution != null && (
+                                                                        <div className="mt-3">
+                                                                            <div className="h-1.5 overflow-hidden rounded-full bg-slate-200">
+                                                                                <div
+                                                                                    className={[
+                                                                                        "h-full rounded-full",
+                                                                                        contribution > 0
+                                                                                            ? "bg-rose-500"
+                                                                                            : contribution < 0
+                                                                                                ? "bg-emerald-500"
+                                                                                                : "bg-slate-400",
+                                                                                    ].join(" ")}
+                                                                                    style={{
+                                                                                        width: `${Math.min(
+                                                                                            100,
+                                                                                            Math.max(
+                                                                                                8,
+                                                                                                absoluteContribution * 5,
+                                                                                            ),
+                                                                                        )}%`,
+                                                                                    }}
+                                                                                />
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
                                                                 </div>
+                                                            );
+                                                        })}
+                                                </div>
 
-                                                                {factor.contribution != null && (
-                                                                    <div className="shrink-0 text-left sm:text-right">
-                                                                        <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
-                                                                            Model contribution
-                                                                        </p>
+                                                {result.diagnostics
+                                                    .prediction_explanation
+                                                    .interpretation && (
+                                                        <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                                            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                                                                Interpretation
+                                                            </p>
 
-                                                                        <p
-                                                                            className={[
-                                                                                "mt-1 text-base font-bold",
-                                                                                contribution > 0
-                                                                                    ? "text-rose-700"
-                                                                                    : contribution < 0
-                                                                                        ? "text-emerald-700"
-                                                                                        : "text-slate-700",
-                                                                            ].join(" ")}
-                                                                        >
-                                                                            {contribution > 0
-                                                                                ? "+"
-                                                                                : contribution < 0
-                                                                                    ? "−"
-                                                                                    : ""}
-                                                                            {absoluteContribution.toFixed(1)} min
-                                                                        </p>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-
-                                                            {factor.contribution != null && (
-                                                                <div className="mt-3">
-                                                                    <div className="h-1.5 overflow-hidden rounded-full bg-slate-200">
-                                                                        <div
-                                                                            className={[
-                                                                                "h-full rounded-full",
-                                                                                contribution > 0
-                                                                                    ? "bg-rose-500"
-                                                                                    : contribution < 0
-                                                                                        ? "bg-emerald-500"
-                                                                                        : "bg-slate-400",
-                                                                            ].join(" ")}
-                                                                            style={{
-                                                                                width: `${Math.min(
-                                                                                    100,
-                                                                                    Math.max(
-                                                                                        8,
-                                                                                        absoluteContribution * 5,
-                                                                                    ),
-                                                                                )}%`,
-                                                                            }}
-                                                                        />
-                                                                    </div>
-                                                                </div>
-                                                            )}
+                                                            <p className="mt-2 text-sm leading-6 text-slate-600">
+                                                                {
+                                                                    result.diagnostics
+                                                                        .prediction_explanation
+                                                                        .interpretation
+                                                                }
+                                                            </p>
                                                         </div>
-                                                    );
-                                                })}
-                                        </div>
+                                                    )}
 
-                                        {result.diagnostics
-                                            .prediction_explanation
-                                            .interpretation && (
-                                                <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                                                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                                                        Interpretation
-                                                    </p>
+                                                <div className="mt-4 flex items-start gap-2 rounded-xl bg-sky-50 px-3 py-2.5">
+                                                    <span className="mt-0.5 text-sky-600">
+                                                        ⓘ
+                                                    </span>
 
-                                                    <p className="mt-2 text-sm leading-6 text-slate-600">
-                                                        {
-                                                            result.diagnostics
-                                                                .prediction_explanation
-                                                                .interpretation
-                                                        }
+                                                    <p className="text-xs leading-5 text-sky-800">
+                                                        These factors describe model associations with the
+                                                        prediction. They should not be interpreted as direct
+                                                        causal effects.
                                                     </p>
                                                 </div>
-                                            )}
-
-                                        <div className="mt-4 flex items-start gap-2 rounded-xl bg-sky-50 px-3 py-2.5">
-                                            <span className="mt-0.5 text-sky-600">
-                                                ⓘ
-                                            </span>
-
-                                            <p className="text-xs leading-5 text-sky-800">
-                                                These factors describe model associations with the
-                                                prediction. They should not be interpreted as direct
-                                                causal effects.
-                                            </p>
-                                        </div>
-
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                         </div>

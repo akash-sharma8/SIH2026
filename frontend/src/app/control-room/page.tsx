@@ -978,11 +978,11 @@ export default function ControlRoomPage() {
                                         >
 
                                             {/* Header */}
-                                            <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
+                                            <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-5 sm:py-4">
                                                 <div className="min-w-0">
                                                     <div className="flex flex-wrap items-center gap-2">
 
-                                                        <h3 className="truncate text-lg font-bold text-slate-950">
+                                                        <h3 className="truncate text-base font-bold text-slate-950 sm:text-lg">
                                                             {item.trainName}
                                                         </h3>
 
@@ -1041,7 +1041,7 @@ export default function ControlRoomPage() {
                                                             item.trainNumber,
                                                         )
                                                     }
-                                                    className="shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+                                                    className="shrink-0 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 transition hover:bg-slate-50 sm:px-3 sm:py-1.5 sm:text-xs"
                                                 >
                                                     Remove
                                                 </button>
@@ -1147,70 +1147,71 @@ export default function ControlRoomPage() {
                                                             </div>
                                                         )}
 
-                                                        {/* Operational metrics */}
-                                                        <div className="grid gap-px border-b border-slate-100 bg-slate-100 sm:grid-cols-2 lg:grid-cols-4">
-                                                            <div className="bg-white p-4">
-                                                                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                                                                    Current
-                                                                </p>
+                                                       {/* Operational metrics */}
+<div className="grid grid-cols-2 gap-2 border-b border-slate-100 bg-slate-50/60 p-3 sm:gap-3 sm:p-4 lg:grid-cols-4">
 
-                                                                <p className="mt-1 text-sm font-semibold text-slate-900">
-                                                                    {result.journey.current_station_name
-                                                                        ?? result.journey.current_station_code
-                                                                        ?? "Unavailable"}
-                                                                </p>
-                                                            </div>
+    <div className="min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+        <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-400 sm:text-[10px]">
+            Current
+        </p>
 
-                                                            <div className="bg-white p-4">
-                                                                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                                                                    Next
-                                                                </p>
+        <p className="mt-1 break-words text-sm font-semibold leading-5 text-slate-900">
+            {result.journey.current_station_name
+                ?? result.journey.current_station_code
+                ?? "Unavailable"}
+        </p>
+    </div>
 
-                                                                <p className="mt-1 text-sm font-semibold text-slate-900">
-                                                                    {scheduled
-                                                                        ? "Not started"
-                                                                        : completed
-                                                                            ? "Journey complete"
-                                                                            : nextPrediction?.station.name
-                                                                            ?? nextPrediction?.station.code
-                                                                            ?? "Unavailable"}
-                                                                </p>
-                                                            </div>
+    <div className="min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+        <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-400 sm:text-[10px]">
+            Next
+        </p>
 
-                                                            <div className="bg-white p-4">
-                                                                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                                                                    ETA
-                                                                </p>
+        <p className="mt-1 break-words text-sm font-semibold leading-5 text-slate-900">
+            {scheduled
+                ? "Not started"
+                : completed
+                    ? "Journey complete"
+                    : nextPrediction?.station.name
+                    ?? nextPrediction?.station.code
+                    ?? "Unavailable"}
+        </p>
+    </div>
 
-                                                                <p className="mt-1 text-sm font-semibold text-sky-700">
-                                                                    {nextPrediction?.forecast.eta
-                                                                        ? formatTime(
-                                                                            nextPrediction
-                                                                                .forecast.eta,
-                                                                        )
-                                                                        : "--"}
-                                                                </p>
-                                                            </div>
+    <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+        <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-400 sm:text-[10px]">
+            ETA
+        </p>
 
-                                                            <div className="bg-white p-4">
-                                                                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                                                                    Delay
-                                                                </p>
+        <p className="mt-1 text-sm font-bold text-sky-700">
+            {nextPrediction?.forecast.eta
+                ? formatTime(
+                    nextPrediction.forecast.eta,
+                )
+                : "--"}
+        </p>
+    </div>
 
-                                                                <span
-                                                                    className={`mt-1 inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${delayClass(
-                                                                        delay,
-                                                                    )}`}
-                                                                >
-                                                                    {delayLabel(delay)}
-                                                                </span>
-                                                            </div>
-                                                        </div>
+    <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+        <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-400 sm:text-[10px]">
+            Delay
+        </p>
+
+        <span
+            className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold sm:px-2.5 sm:py-1 sm:text-[11px] ${delayClass(
+                delay,
+            )}`}
+        >
+            {delayLabel(delay)}
+        </span>
+    </div>
+
+</div>
 
                                                         {/* Footer metadata/actions */}
-                                                        <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                                                        <div className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4">
 
-                                                            <div className="flex flex-wrap gap-2">
+                                                            <div className="flex flex-wrap gap-1.5 sm:gap-2">
                                                                 <span
                                                                     className={[
                                                                         "rounded-full border px-2.5 py-1 text-[10px] font-semibold",
@@ -1272,7 +1273,7 @@ export default function ControlRoomPage() {
                                                                         item.journeyDate,
                                                                     )
                                                                 }
-                                                                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                                                                className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 sm:w-auto"
                                                             >
                                                                 Refresh
                                                             </button>
