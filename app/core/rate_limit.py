@@ -112,6 +112,8 @@ class RedisGlobalRateLimiter:
                 socket_timeout=(
                     redis_connect_timeout_seconds
                 ),
+                health_check_interval=30,
+                socket_keepalive=True,
             )
 
             client.ping()
