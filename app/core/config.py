@@ -35,7 +35,8 @@ class Settings(BaseSettings):
     redis_enabled: bool = False
     redis_url: str = "redis://localhost:6379/0"
     redis_connect_timeout_seconds: float = 0.5
-
+    upstash_redis_rest_url: str = ""
+    upstash_redis_rest_token: str = ""
     model_root: Path = PROJECT_ROOT / "artifacts" / "models"
     config_root: Path = PROJECT_ROOT / "artifacts" / "config"
 

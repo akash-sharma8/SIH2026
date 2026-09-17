@@ -3,9 +3,8 @@ import threading
 import time
 from collections import defaultdict, deque
 
-from redis import Redis
-from redis.exceptions import RedisError
 
+from upstash_redis import Redis as UpstashRedis
 
 logger = logging.getLogger(
     "raileta.rate_limit"
@@ -76,6 +75,8 @@ class RedisGlobalRateLimiter:
         redis_enabled: bool,
         redis_url: str,
         redis_connect_timeout_seconds: float,
+        upstash_redis_rest_url: str = "",
+        upstash_redis_rest_token: str = "",
     ) -> None:
         if max_requests <= 0:
             raise ValueError(
@@ -90,43 +91,43 @@ class RedisGlobalRateLimiter:
         self.max_requests = max_requests
         self.window_seconds = window_seconds
 
-        self._fallback = (
-            SlidingWindowRateLimiter(
-                max_requests=max_requests,
-                window_seconds=window_seconds,
-            )
+        self._fallback = SlidingWindowRateLimiter(
+            max_requests=max_requests,
+            window_seconds=window_seconds,
         )
 
-        self._redis: Redis | None = None
+        self._redis = None
 
         if not redis_enabled:
             return
 
-        try:
-            client = Redis.from_url(
-                redis_url,
-                decode_responses=True,
-                socket_connect_timeout=(
-                    redis_connect_timeout_seconds
-                ),
-                socket_timeout=(
-                    redis_connect_timeout_seconds
-                ),
-                health_check_interval=30,
-                socket_keepalive=True,
-            )
-
-
-
-            self._redis = client
-
-            logger.info(
-                "redis_rate_limiter_enabled"
-            )
-
-        except RedisError as exc:
+        if (
+            not upstash_redis_rest_url
+            or not upstash_redis_rest_token
+        ):
             logger.warning(
                 "redis_rate_limiter_unavailable "
+                "transport=upstash_rest "
+                "fallback=in_memory "
+                "reason=missing_rest_config"
+            )
+            return
+
+        try:
+            self._redis = UpstashRedis(
+                url=upstash_redis_rest_url,
+                token=upstash_redis_rest_token,
+            )
+
+            logger.info(
+                "redis_rate_limiter_enabled "
+                "transport=upstash_rest"
+            )
+
+        except Exception as exc:
+            logger.warning(
+                "redis_rate_limiter_unavailable "
+                "transport=upstash_rest "
                 "fallback=in_memory error=%s",
                 exc,
             )
@@ -149,53 +150,30 @@ class RedisGlobalRateLimiter:
                 redis_key
             )
 
-        except RedisError as first_exc:
-            logger.warning(
-                "redis_rate_limit_retry "
-                "key=%s error=%s",
-                redis_key,
-                first_exc,
-            )
-
-            try:
-                self._redis.connection_pool.disconnect()
-
-                count = self._redis.incr(
-                    redis_key
-                )
-
-            except RedisError as retry_exc:
-                logger.warning(
-                    "redis_rate_limit_failed "
-                    "key=%s fallback=in_memory "
-                    "error=%s",
-                    redis_key,
-                    retry_exc,
-                )
-
-                return self._fallback.allow(
-                    key
-                )
-
-        if count == 1:
-            try:
+            if count == 1:
                 self._redis.expire(
                     redis_key,
                     self.window_seconds,
                 )
 
-            except RedisError as exc:
-                logger.warning(
-                    "redis_rate_limit_expire_failed "
-                    "key=%s error=%s",
-                    redis_key,
-                    exc,
-                )
+            return (
+                count
+                <= self.max_requests
+            )
 
-        return (
-            count
-            <= self.max_requests
-        )
+        except Exception as exc:
+            logger.warning(
+                "redis_rate_limit_failed "
+                "transport=upstash_rest "
+                "key=%s fallback=in_memory "
+                "error=%s",
+                redis_key,
+                exc,
+            )
+
+            return self._fallback.allow(
+                key
+            )
 
     def clear(self) -> None:
         self._fallback.clear()

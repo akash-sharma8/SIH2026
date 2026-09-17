@@ -25,15 +25,17 @@ def _get_provider_rate_limiter(
     redis_enabled: bool,
     redis_url: str,
     redis_connect_timeout_seconds: float,
+    upstash_redis_rest_url: str,
+    upstash_redis_rest_token: str,
 ) -> RedisGlobalRateLimiter:
     return RedisGlobalRateLimiter(
         max_requests=max_requests,
         window_seconds=60,
         redis_enabled=redis_enabled,
         redis_url=redis_url,
-        redis_connect_timeout_seconds=(
-            redis_connect_timeout_seconds
-        ),
+        redis_connect_timeout_seconds=redis_connect_timeout_seconds,
+        upstash_redis_rest_url=upstash_redis_rest_url,
+        upstash_redis_rest_token=upstash_redis_rest_token,
     )
 
 class RailRadarClient:
@@ -62,6 +64,8 @@ class RailRadarClient:
                 settings.redis_enabled,
                 settings.redis_url,
                 settings.redis_connect_timeout_seconds,
+                settings.upstash_redis_rest_url,
+                settings.upstash_redis_rest_token,
             )
         )
 
