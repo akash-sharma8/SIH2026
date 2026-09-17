@@ -1,15 +1,24 @@
 from unittest.mock import Mock, patch
 import pytest
-from app.services.forecast import LiveForecastService
 from app.services.forecast import (
     LiveForecastService,
     _live_payload_cache,
 )
 
 @pytest.fixture(autouse=True)
-def clear_live_payload_cache():
+def clear_live_payload_cache(
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        _live_payload_cache,
+        "_redis",
+        None,
+    )
+
     _live_payload_cache.clear()
+
     yield
+
     _live_payload_cache.clear()
 
 def test_live_forecast_service_success():

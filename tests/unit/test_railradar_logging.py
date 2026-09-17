@@ -1,6 +1,7 @@
 import logging
 from unittest.mock import Mock, patch
 
+import pytest
 import requests
 
 from app.clients.railradar import RailRadarClient
@@ -9,7 +10,32 @@ from app.core.errors import (
     ProviderTimeoutError,
     ProviderUnavailableError,
 )
+from app.core.rate_limit import (
+    RedisGlobalRateLimiter,
+)
 
+
+@pytest.fixture(autouse=True)
+def isolate_provider_rate_limiter(
+    monkeypatch,
+):
+    limiter = RedisGlobalRateLimiter(
+        max_requests=10,
+        window_seconds=60,
+        redis_enabled=False,
+        redis_url="",
+        redis_connect_timeout_seconds=0.5,
+    )
+
+    monkeypatch.setattr(
+        "app.clients.railradar."
+        "_get_provider_rate_limiter",
+        lambda *args, **kwargs: limiter,
+    )
+
+    yield
+
+    limiter.clear()
 
 def build_client():
     settings = Settings(

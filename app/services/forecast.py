@@ -44,7 +44,7 @@ from app.services.disruption_alerts import (
     build_disruption_alerts,
 )
 
-from app.services.cache import TTLCache
+from app.services.cache import ResilientCache
 from app.services.route_map_builder import build_route_map
 
 from app.clients.openweather_forecast import (
@@ -59,8 +59,15 @@ logger = logging.getLogger(
     "raileta.forecast"
 )
 
-_live_payload_cache = TTLCache(
-    ttl_seconds=get_settings().cache_ttl_seconds
+_settings = get_settings()
+
+_live_payload_cache = ResilientCache(
+    ttl_seconds=_settings.cache_ttl_seconds,
+    redis_enabled=_settings.redis_enabled,
+    redis_url=_settings.redis_url,
+    redis_connect_timeout_seconds=(
+        _settings.redis_connect_timeout_seconds
+    ),
 )
 
 def _normalize_provider_status(
@@ -509,94 +516,141 @@ class LiveForecastService:
         if api_result is None:
             cache_status = "MISS"
 
-            client = RailRadarClient(
-                get_settings()
-            )
-
-            api_result = client.get_live_journey(
-                train_number=normalized_train_number,
-                journey_date=journey_date,
-                authoritative=False,
-            )
-
-            if normalized_date:
-                provider_data = (
-                    api_result.get("data", {})
-                    if isinstance(api_result, dict)
-                    else {}
-                )
-
-                train_data = (
-                    provider_data.get("train", {})
-                    if isinstance(provider_data, dict)
-                    else {}
-                )
-
-                run_days = (
-                    train_data.get("runDays", [])
-                    if isinstance(train_data, dict)
-                    else []
-                )
-
-                normalized_run_days = {
-                    str(day).strip().lower()[:3]
-                    for day in run_days
-                    if str(day).strip()
-                }
-
-                if normalized_run_days:
-                    try:
-                        requested_date = (
-                            date.fromisoformat(
-                                normalized_date
-                            )
-                        )
-                    except ValueError:
-                        requested_date = None
-
-                    if requested_date is not None:
-                        weekday_codes = (
-                            "mon",
-                            "tue",
-                            "wed",
-                            "thu",
-                            "fri",
-                            "sat",
-                            "sun",
-                        )
-
-                        requested_day = (
-                            weekday_codes[
-                                requested_date.weekday()
-                            ]
-                        )
-
-                        if (
-                            requested_day
-                            not in normalized_run_days
-                        ):
-                            raise TrainNotScheduledError(
-                                "This train is not scheduled "
-                                "to operate on the selected date.",
-                                details={
-                                    "train_number":
-                                        normalized_train_number,
-                                    "journey_date":
-                                        normalized_date,
-                                    "requested_day":
-                                        requested_day,
-                                    "run_days":
-                                        sorted(
-                                            normalized_run_days
-                                        ),
-                                },
-                            )
-
-            _live_payload_cache.set(
+            with _live_payload_cache.single_flight(
                 cache_key,
-                api_result,
-            )
+                lock_ttl_seconds=15,
+            ):
+                # Another request may have filled
+                # the cache while we were waiting.
+                api_result = (
+                    _live_payload_cache.get(
+                        cache_key
+                    )
+                )
 
+                if api_result is not None:
+                    cache_status = "HIT"
+
+                else:
+                    client = RailRadarClient(
+                        get_settings()
+                    )
+
+                    api_result = (
+                        client.get_live_journey(
+                            train_number=(
+                                normalized_train_number
+                            ),
+                            journey_date=journey_date,
+                            authoritative=False,
+                        )
+                    )
+
+                    if normalized_date:
+                        provider_data = (
+                            api_result.get(
+                                "data",
+                                {},
+                            )
+                            if isinstance(
+                                api_result,
+                                dict,
+                            )
+                            else {}
+                        )
+
+                        train_data = (
+                            provider_data.get(
+                                "train",
+                                {},
+                            )
+                            if isinstance(
+                                provider_data,
+                                dict,
+                            )
+                            else {}
+                        )
+
+                        run_days = (
+                            train_data.get(
+                                "runDays",
+                                [],
+                            )
+                            if isinstance(
+                                train_data,
+                                dict,
+                            )
+                            else []
+                        )
+
+                        normalized_run_days = {
+                            str(day)
+                            .strip()
+                            .lower()[:3]
+                            for day in run_days
+                            if str(day).strip()
+                        }
+
+                        if normalized_run_days:
+                            try:
+                                requested_date = (
+                                    date.fromisoformat(
+                                        normalized_date
+                                    )
+                                )
+
+                            except ValueError:
+                                requested_date = None
+
+                            if (
+                                requested_date
+                                is not None
+                            ):
+                                weekday_codes = (
+                                    "mon",
+                                    "tue",
+                                    "wed",
+                                    "thu",
+                                    "fri",
+                                    "sat",
+                                    "sun",
+                                )
+
+                                requested_day = (
+                                    weekday_codes[
+                                        requested_date
+                                        .weekday()
+                                    ]
+                                )
+
+                                if (
+                                    requested_day
+                                    not in
+                                    normalized_run_days
+                                ):
+                                    raise (
+                                        TrainNotScheduledError(
+                                            "This train is not scheduled "
+                                            "to operate on the selected date.",
+                                            details={
+                                                "train_number":
+                                                    normalized_train_number,
+                                                "journey_date":
+                                                    normalized_date,
+                                                "requested_day":
+                                                    requested_day,
+                                                "run_days":
+                                                    sorted(
+                                                        normalized_run_days
+                                                    ),
+                                            },
+                                        )
+                                    )
+
+                    _live_payload_cache.set(
+                        cache_key,
+                        api_result,
+                    )
         try:
             adapter = InferenceAdapter(
                 artifacts

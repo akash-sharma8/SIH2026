@@ -3,7 +3,26 @@ from typing import Any
 from app.clients.railradar import (
     RailRadarClient,
 )
+from app.core.config import (
+    get_settings,
+)
+from app.services.cache import (
+    ResilientCache,
+)
 
+
+_settings = get_settings()
+
+_train_search_cache = ResilientCache(
+    ttl_seconds=(
+        _settings.search_cache_ttl_seconds
+    ),
+    redis_enabled=_settings.redis_enabled,
+    redis_url=_settings.redis_url,
+    redis_connect_timeout_seconds=(
+        _settings.redis_connect_timeout_seconds
+    ),
+)
 
 class TrainSearchService:
     def __init__(
@@ -12,11 +31,35 @@ class TrainSearchService:
     ) -> None:
         self.client = client
 
+
+
     def search(
         self,
         query: str,
         limit: int = 10,
     ) -> dict[str, Any]:
+
+        normalized_query = (
+            str(query or "")
+            .strip()
+            .lower()
+        )
+
+        cache_key = (
+            f"train-search:"
+            f"{normalized_query}:"
+            f"{limit}"
+        )
+
+        cached_response = (
+            _train_search_cache.get(
+                cache_key
+            )
+        )
+
+        if cached_response is not None:
+            return cached_response
+        
         payload = (
             self.client.search_trains(
                 query=query,
@@ -99,7 +142,14 @@ class TrainSearchService:
                     }
                 )
 
-        return {
+        response = {
             "success": True,
             "results": results,
         }
+
+        _train_search_cache.set(
+            cache_key,
+            response,
+        )
+
+        return response

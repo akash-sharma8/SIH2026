@@ -30,6 +30,11 @@ class Settings(BaseSettings):
     openweather_api_key: str | None = None
     cache_ttl_seconds: int = 180
     max_live_requests_per_minute: int = 10
+    railradar_max_requests_per_minute: int = 10
+    search_cache_ttl_seconds: int = 900
+    redis_enabled: bool = False
+    redis_url: str = "redis://localhost:6379/0"
+    redis_connect_timeout_seconds: float = 0.5
 
     model_root: Path = PROJECT_ROOT / "artifacts" / "models"
     config_root: Path = PROJECT_ROOT / "artifacts" / "config"

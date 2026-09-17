@@ -3,6 +3,7 @@
 import {
     FormEvent,
     useEffect,
+    useRef,
     useState,
 } from "react";
 
@@ -120,6 +121,7 @@ export default function LiveTrainSearch({
         setShowAllStationProgress,
     ] = useState(false);
 
+    const skipNextTrainSearchRef = useRef(false);
 
     const [
         trainSearchResults,
@@ -210,6 +212,11 @@ export default function LiveTrainSearch({
         return "border-red-200 bg-red-50 text-red-700";
     }
     useEffect(() => {
+        if (skipNextTrainSearchRef.current) {
+            skipNextTrainSearchRef.current = false;
+            return;
+        }
+
         const query =
             searchQuery.trim();
 
@@ -813,6 +820,7 @@ export default function LiveTrainSearch({
                                                 setTrainNumber(
                                                     train.train_number,
                                                 );
+                                                skipNextTrainSearchRef.current = true;
 
                                                 setSearchQuery(
                                                     `${train.train_number} — ${train.train_name}`,

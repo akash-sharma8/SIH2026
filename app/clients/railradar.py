@@ -5,7 +5,9 @@ from typing import Any
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+from app.core.rate_limit import RedisGlobalRateLimiter
 from app.core.config import Settings
+from functools import lru_cache
 from app.core.errors import (
     JourneyNotFoundError,
     ProviderConfigurationError,
@@ -15,6 +17,24 @@ from app.core.errors import (
 ) 
 
 provider_logger = logging.getLogger("raileta.provider")
+
+
+@lru_cache(maxsize=8)
+def _get_provider_rate_limiter(
+    max_requests: int,
+    redis_enabled: bool,
+    redis_url: str,
+    redis_connect_timeout_seconds: float,
+) -> RedisGlobalRateLimiter:
+    return RedisGlobalRateLimiter(
+        max_requests=max_requests,
+        window_seconds=60,
+        redis_enabled=redis_enabled,
+        redis_url=redis_url,
+        redis_connect_timeout_seconds=(
+            redis_connect_timeout_seconds
+        ),
+    )
 
 class RailRadarClient:
     def __init__(
@@ -34,6 +54,15 @@ class RailRadarClient:
 
         self.timeout_seconds = (
             timeout_seconds
+        )
+
+        self._provider_rate_limiter = (
+            _get_provider_rate_limiter(
+                settings.railradar_max_requests_per_minute,
+                settings.redis_enabled,
+                settings.redis_url,
+                settings.redis_connect_timeout_seconds,
+            )
         )
 
         retry_strategy = Retry(
@@ -195,6 +224,24 @@ class RailRadarClient:
         started_at = (
             time.perf_counter()
         )
+
+        if not self._provider_rate_limiter.allow(
+            "railradar:global"
+        ):
+            raise ProviderRateLimitError(
+                "RailRadar request budget has been "
+                "reached.",
+                details={
+                    "limit":
+                        self._provider_rate_limiter
+                        .max_requests,
+                    "window_seconds":
+                        self._provider_rate_limiter
+                        .window_seconds,
+                },
+            )
+
+
         provider_logger.info(
             "provider_request_started "
             "provider=railradar "
