@@ -149,29 +149,53 @@ class RedisGlobalRateLimiter:
                 redis_key
             )
 
-            if count == 1:
+        except RedisError as first_exc:
+            logger.warning(
+                "redis_rate_limit_retry "
+                "key=%s error=%s",
+                redis_key,
+                first_exc,
+            )
+
+            try:
+                self._redis.connection_pool.disconnect()
+
+                count = self._redis.incr(
+                    redis_key
+                )
+
+            except RedisError as retry_exc:
+                logger.warning(
+                    "redis_rate_limit_failed "
+                    "key=%s fallback=in_memory "
+                    "error=%s",
+                    redis_key,
+                    retry_exc,
+                )
+
+                return self._fallback.allow(
+                    key
+                )
+
+        if count == 1:
+            try:
                 self._redis.expire(
                     redis_key,
                     self.window_seconds,
                 )
 
-            return (
-                count
-                <= self.max_requests
-            )
+            except RedisError as exc:
+                logger.warning(
+                    "redis_rate_limit_expire_failed "
+                    "key=%s error=%s",
+                    redis_key,
+                    exc,
+                )
 
-        except RedisError as exc:
-            logger.warning(
-                "redis_rate_limit_failed "
-                "key=%s fallback=in_memory "
-                "error=%s",
-                redis_key,
-                exc,
-            )
-
-            return self._fallback.allow(
-                key
-            )
+        return (
+            count
+            <= self.max_requests
+        )
 
     def clear(self) -> None:
         self._fallback.clear()
