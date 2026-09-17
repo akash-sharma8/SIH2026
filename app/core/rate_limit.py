@@ -116,7 +116,7 @@ class RedisGlobalRateLimiter:
                 socket_keepalive=True,
             )
 
-            client.ping()
+
 
             self._redis = client
 
