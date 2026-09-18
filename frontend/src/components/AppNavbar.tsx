@@ -1,8 +1,8 @@
 "use client";
-import { useEffect, useRef } from "react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { signOut } from "next-auth/react";
 
 type AppNavbarProps = {
     role?:
@@ -20,6 +20,62 @@ export default function AppNavbar({
 }: AppNavbarProps) {
 
     const pathname = usePathname();
+
+    const [sessionUser, setSessionUser] = useState<{
+        role?: "STATION_STAFF" | "CONTROL_ROOM";
+        stationCode?: string;
+        name?: string | null;
+    } | null>(null);
+
+    const [sessionLoaded, setSessionLoaded] =
+        useState(false);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        async function loadSession() {
+            try {
+                const response = await fetch(
+                    "/api/auth/session",
+                    {
+                        cache: "no-store",
+                    },
+                );
+
+                const session =
+                    await response.json();
+
+                if (!cancelled) {
+                    setSessionUser(
+                        session?.user ?? null,
+                    );
+                }
+            } catch {
+                if (!cancelled) {
+                    setSessionUser(null);
+                }
+            } finally {
+                if (!cancelled) {
+                    setSessionLoaded(true);
+                }
+            }
+        }
+
+        loadSession();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [pathname]);
+
+    const displayRole =
+        sessionUser?.role === "STATION_STAFF"
+            ? sessionUser.stationCode
+                ? `Station Staff • ${sessionUser.stationCode}`
+                : "Station Staff"
+            : sessionUser?.role === "CONTROL_ROOM"
+                ? "Control Room"
+                : role;
 
     const [
         roleMenuOpen,
@@ -342,7 +398,9 @@ export default function AppNavbar({
                                 <path d="M6 20c.5-4 2.5-6 6-6s5.5 2 6 6" />
                             </svg>
 
-                            {role}
+                            {sessionLoaded
+                                ? displayRole
+                                : role}
 
                             <svg
                                 viewBox="0 0 24 24"
@@ -361,58 +419,91 @@ export default function AppNavbar({
                         </button>
 
                         {roleMenuOpen && (
-                            <div className="absolute right-0 top-full z-[1100] mt-2 w-52 overflow-hidden rounded-xl border border-slate-700 bg-[#172235] p-2 shadow-xl">
-                                <p className="px-3 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                                    Switch role view
-                                </p>
+                            <div className="absolute right-0 top-full z-[1100] mt-2 w-56 overflow-hidden rounded-xl border border-slate-700 bg-[#172235] p-2 shadow-xl">
 
-                                <Link
-                                    href="/"
-                                    onClick={() =>
-                                        setRoleMenuOpen(false)
-                                    }
-                                    className="flex items-center justify-between rounded-lg px-3 py-2 text-sm text-slate-200 transition hover:bg-slate-700"
-                                >
-                                    Passenger
+                                {sessionUser ? (
+                                    <>
+                                        <div className="border-b border-slate-700 px-3 pb-3 pt-1">
+                                            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                                                Signed in as
+                                            </p>
 
-                                    {role === "Passenger" && (
-                                        <span className="text-sky-400">
-                                            ✓
-                                        </span>
-                                    )}
-                                </Link>
+                                            <p className="mt-1 text-sm font-medium text-white">
+                                                {displayRole}
+                                            </p>
 
-                                <Link
-                                    href="/station-display"
-                                    onClick={() =>
-                                        setRoleMenuOpen(false)
-                                    }
-                                    className="flex items-center justify-between rounded-lg px-3 py-2 text-sm text-slate-200 transition hover:bg-slate-700"
-                                >
-                                    Station board
+                                            {sessionUser.role ===
+                                                "STATION_STAFF" &&
+                                                sessionUser.stationCode && (
+                                                    <p className="mt-0.5 text-xs text-slate-400">
+                                                        Station{" "}
+                                                        {sessionUser.stationCode}
+                                                    </p>
+                                                )}
+                                        </div>
 
-                                    {role === "Station board" && (
-                                        <span className="text-sky-400">
-                                            ✓
-                                        </span>
-                                    )}
-                                </Link>
+                                        <Link
+                                            href={
+                                                sessionUser.role ===
+                                                    "STATION_STAFF"
+                                                    ? "/station-display"
+                                                    : "/control-room"
+                                            }
+                                            onClick={() =>
+                                                setRoleMenuOpen(false)
+                                            }
+                                            className="mt-2 flex items-center rounded-lg px-3 py-2 text-sm text-slate-200 transition hover:bg-slate-700"
+                                        >
+                                            Open dashboard
+                                        </Link>
 
-                                <Link
-                                    href="/control-room"
-                                    onClick={() =>
-                                        setRoleMenuOpen(false)
-                                    }
-                                    className="flex items-center justify-between rounded-lg px-3 py-2 text-sm text-slate-200 transition hover:bg-slate-700"
-                                >
-                                    Control room
+                                        <button
+                                            type="button"
+                                            onClick={async () => {
+                                                setRoleMenuOpen(false);
 
-                                    {role === "Control room" && (
-                                        <span className="text-sky-400">
-                                            ✓
-                                        </span>
-                                    )}
-                                </Link>
+                                                await signOut({
+                                                    callbackUrl: "/",
+                                                });
+                                            }}
+                                            className="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm text-red-300 transition hover:bg-red-500/10"
+                                        >
+                                            Sign out
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <p className="px-3 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                                            Access
+                                        </p>
+
+                                        <Link
+                                            href="/"
+                                            onClick={() =>
+                                                setRoleMenuOpen(false)
+                                            }
+                                            className="flex items-center justify-between rounded-lg px-3 py-2 text-sm text-slate-200 transition hover:bg-slate-700"
+                                        >
+                                            Passenger
+
+                                            {role === "Passenger" && (
+                                                <span className="text-sky-400">
+                                                    ✓
+                                                </span>
+                                            )}
+                                        </Link>
+
+                                        <Link
+                                            href="/login"
+                                            onClick={() =>
+                                                setRoleMenuOpen(false)
+                                            }
+                                            className="mt-1 flex items-center rounded-lg px-3 py-2 text-sm font-medium text-sky-300 transition hover:bg-slate-700"
+                                        >
+                                            Staff login
+                                        </Link>
+                                    </>
+                                )}
                             </div>
                         )}
                     </div>

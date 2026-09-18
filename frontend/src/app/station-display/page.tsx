@@ -61,6 +61,51 @@ function getTodayLocalDate() {
 }
 
 export default function StationDisplayPage() {
+
+    const [
+        stationCode,
+        setStationCode,
+    ] = useState<string | null>(null);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        async function loadSession() {
+            try {
+                const response = await fetch(
+                    "/api/auth/session",
+                    {
+                        cache: "no-store",
+                    },
+                );
+
+                const session =
+                    await response.json();
+
+                if (!cancelled) {
+                    setStationCode(
+                        session?.user?.stationCode
+                        ?? null,
+                    );
+                }
+            } catch {
+                if (!cancelled) {
+                    setStationCode(null);
+                }
+            }
+        }
+
+        loadSession();
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    const stationLabel =
+        stationCode
+            ? `Station ${stationCode}`
+            : "Assigned station";
     const [query, setQuery] = useState("");
     const [trainNumber, setTrainNumber] =
         useState("");
@@ -253,11 +298,15 @@ export default function StationDisplayPage() {
                     ...withoutDuplicate,
                 ].slice(0, 5);
 
+                const recentStorageKey =
+                    stationCode
+                        ? `raileta-station-recent-trains:${stationCode}`
+                        : "raileta-station-recent-trains";
+
                 window.localStorage.setItem(
-                    "raileta-station-recent-trains",
+                    recentStorageKey,
                     JSON.stringify(next),
                 );
-
                 return next;
             });
         } catch (err) {
@@ -332,6 +381,66 @@ export default function StationDisplayPage() {
         result?.journey.timeline?.stations
         ?? [];
 
+
+    const assignedStation =
+        stationCode
+            ? timelineStations.find(
+                (station) =>
+                    station.station_code ===
+                    stationCode,
+            ) ?? null
+            : null;
+
+    const assignedStationPrediction =
+        stationCode
+            ? result?.predictions?.find(
+                (prediction) =>
+                    prediction.station.code ===
+                    stationCode,
+            ) ?? null
+            : null;
+
+    const assignedDelayMin =
+        assignedStationPrediction
+            ?.forecast.predicted_delay_min
+        ?? assignedStation?.delay_min
+        ?? null;
+
+    const delaySeverity =
+        assignedDelayMin == null
+            ? null
+            : assignedDelayMin >= 30
+                ? "HIGH"
+                : assignedDelayMin >= 10
+                    ? "MEDIUM"
+                    : "LOW";
+
+    const requiresAttention =
+        !isScheduled
+        && assignedDelayMin != null
+        && assignedDelayMin >= 30;
+
+
+    const assignedEta =
+        assignedStationPrediction
+            ?.forecast.eta
+        ?? assignedStation?.predicted_arrival
+        ?? null;
+
+    const announcementText =
+        assignedStation
+            && !isScheduled
+            && assignedEta
+            ? `Train ${result?.journey.train_number ?? ""} ${result?.journey.train_name ?? ""
+            } is expected at ${assignedStation.station_name
+            ?? stationCode
+            ?? "the assigned station"
+            } at ${formatTime(assignedEta)}${assignedDelayMin != null
+                ? `, with an estimated delay of ${assignedDelayMin.toFixed(0)} minutes.`
+                : "."
+            }`
+            : null;
+
     return (
         <main className="min-h-screen bg-[#f7f9fb] text-slate-950">
 
@@ -343,7 +452,7 @@ export default function StationDisplayPage() {
                 <section className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                     <div>
                         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700">
-                            Station staff
+                            Station staff • {stationLabel}
                         </p>
 
                         <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
@@ -354,6 +463,13 @@ export default function StationDisplayPage() {
                             Live predicted arrival board with delay, confidence
                             and platform context for station operations.
                         </p>
+                        {stationCode && (
+                            <div className="mt-3">
+                                <span className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">
+                                    Assigned station: {stationCode}
+                                </span>
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
@@ -616,6 +732,125 @@ export default function StationDisplayPage() {
                             </div>
                         </section>
 
+                        {stationCode && (
+                            <section className="rounded-2xl border border-sky-200 bg-sky-50/50 p-5 shadow-sm sm:p-6">
+                                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                                    <div>
+                                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">
+                                            Assigned station
+                                        </p>
+
+                                        <h3 className="mt-1 text-xl font-bold text-slate-950">
+                                            {assignedStation?.station_name
+                                                ?? stationCode}
+                                        </h3>
+
+                                        <p className="mt-1 text-sm text-slate-500">
+                                            Station code: {stationCode}
+                                        </p>
+                                    </div>
+
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        {requiresAttention && (
+                                            <span className="w-fit rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700">
+                                                Attention required
+                                            </span>
+                                        )}
+
+                                        <span className="w-fit rounded-full border border-sky-200 bg-white px-3 py-1.5 text-xs font-semibold text-sky-700">
+                                            Operational view
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {assignedStation ? (
+                                    <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                                        <div className="rounded-xl border border-slate-200 bg-white p-4">
+                                            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                                Status
+                                            </p>
+
+                                            <p className="mt-1 font-semibold text-slate-900">
+                                                {assignedStation.status}
+                                            </p>
+                                        </div>
+
+                                        <div className="rounded-xl border border-slate-200 bg-white p-4">
+                                            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                                Scheduled arrival
+                                            </p>
+
+                                            <p className="mt-1 font-semibold text-slate-900">
+                                                {formatTime(
+                                                    assignedStation
+                                                        .scheduled_arrival,
+                                                )}
+                                            </p>
+                                        </div>
+
+                                        <div className="rounded-xl border border-slate-200 bg-white p-4">
+                                            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                                Predicted arrival
+                                            </p>
+
+                                            <p className="mt-1 font-semibold text-slate-900">
+                                                {isScheduled
+                                                    ? "Available after departure"
+                                                    : formatTime(
+                                                        assignedStationPrediction
+                                                            ?.forecast.eta
+                                                        ?? assignedStation
+                                                            .predicted_arrival,
+                                                    )}
+                                            </p>
+                                        </div>
+
+                                        <div className="rounded-xl border border-slate-200 bg-white p-4">
+                                            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                                Platform
+                                            </p>
+
+                                            <p className="mt-1 font-semibold text-slate-900">
+                                                {assignedStation.platform
+                                                    ?? "--"}
+                                            </p>
+                                        </div>
+
+                                        <div className="rounded-xl border border-slate-200 bg-white p-4">
+                                            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                                Delay status
+                                            </p>
+
+                                            <p className="mt-1 font-semibold text-slate-900">
+                                                {isScheduled
+                                                    ? "Not started"
+                                                    : assignedDelayMin != null
+                                                        ? `${assignedDelayMin.toFixed(1)} min • ${delaySeverity}`
+                                                        : "Unavailable"}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="mt-5 rounded-xl border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-500">
+                                        This train does not currently include
+                                        station {stationCode} in its available
+                                        journey timeline.
+                                    </div>
+                                )}
+
+                                {announcementText && (
+                                    <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
+                                        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                            Passenger announcement suggestion
+                                        </p>
+
+                                        <p className="mt-2 text-sm leading-6 text-slate-700">
+                                            {announcementText}
+                                        </p>
+                                    </div>
+                                )}
+                            </section>
+                        )}
 
 
                         {result.journey.timeline &&
